@@ -60,13 +60,7 @@ async def test_email_to_video_pipeline():
         "body": """
         Hi team,
         
-        We need to have an urgent team meeting tomorrow at 2 PM to discuss the project updates.
-        Please prepare your progress reports and be ready to present your findings.
-        
-        This is critical for our client presentation next week.
-        
-        Best regards,
-        Sarah
+        this is my final transmission. i’ve been trapped in an endless subway surfers loop for 72 hours. minecraft steve keeps speed-bridging in the corner of my vision. the text-to-speech voice just said “emotional damage” and i felt that in my soul. if i don’t make it out, tell my for you page i loved her.
         """
     }
     

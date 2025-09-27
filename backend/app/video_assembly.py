@@ -5,7 +5,8 @@ import random
 import tempfile
 import time
 import uuid
-from typing import Dict, Any, List
+import re
+from typing import Dict, Any, List, Tuple
 import ffmpeg
 from openai import AsyncOpenAI
 
@@ -24,6 +25,123 @@ from app.video_config import get_background_video as config_get_background_video
 class VideoAssemblyError(Exception):
     """Exception raised when video assembly fails"""
     pass
+
+
+def generate_word_timings(script: str, audio_duration: float) -> List[Tuple[str, float, float]]:
+    """
+    Generate word-level timings for subtitles based on script and audio duration.
+    
+    Args:
+        script: The text script
+        audio_duration: Duration of the audio in seconds
+        
+    Returns:
+        List of (word, start_time, end_time) tuples
+    """
+    # Clean and split the script into words
+    words = re.findall(r'\b\w+\b', script.lower())
+    
+    if not words:
+        return []
+    
+    # Estimate timing - assuming average speaking rate of 150 words per minute
+    # But adjust based on actual audio duration
+    total_words = len(words)
+    avg_word_duration = audio_duration / total_words if total_words > 0 else 0.5
+    
+    # Add some variance to make it more natural
+    word_timings = []
+    current_time = 0.2  # Start slightly after beginning
+    
+    for i, word in enumerate(words):
+        # Vary word duration based on word length and position
+        word_length_factor = len(word) / 5.0  # Longer words take more time
+        position_factor = 1.0 + (0.1 * (i % 3))  # Add slight variation
+        
+        word_duration = avg_word_duration * word_length_factor * position_factor
+        word_duration = max(0.3, min(word_duration, 1.5))  # Clamp between 0.3-1.5 seconds
+        
+        start_time = current_time
+        end_time = current_time + word_duration
+        
+        word_timings.append((word, start_time, end_time))
+        current_time = end_time + 0.1  # Small gap between words
+    
+    return word_timings
+
+
+def create_subtitle_file(script: str, audio_duration: float, video_id: str) -> str:
+    """
+    Create an SRT subtitle file for the script.
+    
+    Args:
+        script: The text script
+        audio_duration: Duration of the audio in seconds
+        video_id: Unique video identifier
+        
+    Returns:
+        Path to the created SRT file
+    """
+    try:
+        # Generate word timings
+        word_timings = generate_word_timings(script, audio_duration)
+        
+        # Create SRT file
+        srt_path = f"/tmp/subtitles_{video_id}.srt"
+        
+        with open(srt_path, 'w', encoding='utf-8') as f:
+            subtitle_index = 1
+            
+            # Group words into subtitle chunks (2-4 words per subtitle for TikTok style)
+            chunk_size = 3
+            for i in range(0, len(word_timings), chunk_size):
+                chunk = word_timings[i:i + chunk_size]
+                
+                if not chunk:
+                    continue
+                
+                # Get timing for the chunk
+                start_time = chunk[0][1]  # Start of first word
+                end_time = chunk[-1][2]   # End of last word
+                
+                # Format time for SRT (HH:MM:SS,mmm)
+                start_srt = format_srt_time(start_time)
+                end_srt = format_srt_time(end_time)
+                
+                # Combine words in chunk
+                text = ' '.join(word[0] for word in chunk).upper()
+                
+                # Write SRT entry
+                f.write(f"{subtitle_index}\n")
+                f.write(f"{start_srt} --> {end_srt}\n")
+                f.write(f"{text}\n\n")
+                
+                subtitle_index += 1
+        
+        logger.info(f"Created subtitle file: {srt_path}")
+        return srt_path
+        
+    except Exception as e:
+        logger.error(f"Failed to create subtitle file: {e}")
+        return None
+
+
+def format_srt_time(seconds: float) -> str:
+    """
+    Format time in seconds to SRT time format (HH:MM:SS,mmm).
+    
+    Args:
+        seconds: Time in seconds
+        
+    Returns:
+        Formatted time string
+    """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millisecs = int((seconds % 1) * 1000)
+    
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millisecs:03d}"
 
 
 async def generate_audio(script: str) -> str:
@@ -45,10 +163,18 @@ async def generate_audio(script: str) -> str:
         if not openai_client:
             logger.warning("OpenAI client not configured, using fallback audio")
             return "assets/default_audio.mp3"
+        
+        # Select random voice for variety
+        available_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        selected_voice = random.choice(available_voices)
+        logger.info(f"Selected TTS voice: {selected_voice}")
+        
+        # Store the selected voice for later retrieval
+        generate_audio.last_voice = selected_voice
             
         response = await openai_client.audio.speech.create(
             model="tts-1",
-            voice="nova",  # Female voice, good for content
+            voice=selected_voice,
             input=script
         )
         
@@ -149,13 +275,14 @@ def get_background_video(category: str = None) -> str:
     return f"assets/backgrounds/{selected_video}"
 
 
-async def assemble_video(audio_url: str, email_data: Dict[str, Any]) -> str:
+async def assemble_video(audio_url: str, email_data: Dict[str, Any], script: str = "") -> str:
     """
-    Assemble final video with audio, background, and text overlay.
+    Assemble final video with audio, background, text overlay, and subtitles.
     
     Args:
         audio_url: URL of generated audio
         email_data: Parsed email data
+        script: The original script text for subtitle generation
         
     Returns:
         URL of assembled video
@@ -178,6 +305,10 @@ async def assemble_video(audio_url: str, email_data: Dict[str, Any]) -> str:
         email_content = f"{email_data.get('subject', '')} {email_data.get('body', '')}"
         background_path = config_get_background_video(email_content=email_content)
         
+        # Store the background video filename for later retrieval
+        background_filename = os.path.basename(background_path)
+        assemble_video.last_background_video = background_filename
+        
         # Check if background video exists
         if not os.path.exists(background_path):
             logger.warning(f"Background video not found: {background_path}")
@@ -194,13 +325,21 @@ async def assemble_video(audio_url: str, email_data: Dict[str, Any]) -> str:
         # Calculate video duration based on audio
         duration = calculate_video_duration_from_audio(audio_path)
         
-        # Create FFmpeg command
+        # Generate subtitles if script is provided
+        subtitle_path = None
+        if script and script.strip():
+            subtitle_path = create_subtitle_file(script, duration, video_id)
+            if subtitle_path:
+                temp_files.append(subtitle_path)
+        
+        # Create FFmpeg command with subtitles
         command = create_ffmpeg_command(
             audio_path=audio_path,
             background_path=background_path,
             output_path=output_path,
             email_data=email_data,
-            duration=duration
+            duration=duration,
+            subtitle_path=subtitle_path
         )
         
         # Run FFmpeg
@@ -238,9 +377,9 @@ async def assemble_video(audio_url: str, email_data: Dict[str, Any]) -> str:
 
 
 def create_ffmpeg_command(audio_path: str, background_path: str, output_path: str, 
-                         email_data: Dict[str, Any], duration: float):
+                         email_data: Dict[str, Any], duration: float, subtitle_path: str = None):
     """
-    Create FFmpeg command for video assembly.
+    Create FFmpeg command for video assembly with optional subtitles.
     
     Args:
         audio_path: Path to audio file
@@ -248,6 +387,7 @@ def create_ffmpeg_command(audio_path: str, background_path: str, output_path: st
         output_path: Path for output video
         email_data: Email data for text overlay
         duration: Video duration in seconds
+        subtitle_path: Optional path to SRT subtitle file
         
     Returns:
         FFmpeg command object
@@ -271,28 +411,15 @@ def create_ffmpeg_command(audio_path: str, background_path: str, output_path: st
         .filter('setpts', 'PTS-STARTPTS')  # Reset timestamps
     )
     
-    # Add text overlays
-    video = video.filter(
-        'drawtext',
-        text=f'📧 {sender}',
-        fontfile='/System/Library/Fonts/Arial.ttf',
-        fontsize=40,
-        fontcolor='white',
-        x='(w-text_w)/2',
-        y='h*0.1',
-        enable=f'between(t,0,{duration})'
-    )
+    # Text overlays removed - keeping only subtitles for cleaner look
     
-    video = video.filter(
-        'drawtext',
-        text=subject,
-        fontfile='/System/Library/Fonts/Arial.ttf',
-        fontsize=32,
-        fontcolor='white',
-        x='(w-text_w)/2',
-        y='h*0.85',
-        enable=f'between(t,0,{duration})'
-    )
+    # Add subtitles if provided
+    if subtitle_path and os.path.exists(subtitle_path):
+        video = video.filter(
+            'subtitles',
+            subtitle_path,
+            force_style='FontName=Arial,FontSize=24,PrimaryColour=&Hffffff,OutlineColour=&H000000,BorderStyle=0,Outline=1,Shadow=0,Alignment=2,MarginV=50,BackColour=&H00000000'
+        )
     
     # Combine video and audio
     output = ffmpeg.output(

@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional
 from app.email_parser import parse_email, EmailParseError
 from app.script_generator import generate_script_with_retry, ScriptGenerationError
 from app.video_assembly import assemble_video, generate_audio, VideoAssemblyError
+from app.supabase_client_simple import save_email, save_video, is_supabase_available
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +91,37 @@ async def process_email(email_data: Dict[str, Any]) -> Optional[str]:
         
         # Step 4: Assemble video (critical step)
         try:
-            video_url = await assemble_video(audio_url, parsed_email)
+            video_url = await assemble_video(audio_url, parsed_email, script)
             
             duration = time.time() - start_time
+            
+            # Step 5: Save to Supabase
+            email_uuid = None
+            if is_supabase_available():
+                try:
+                    # Save email data
+                    email_uuid = await save_email(parsed_email)
+                    
+                    # Prepare video data for Supabase (simplified)
+                    video_data = {
+                        'video_id': parsed_email['id'],
+                        'video_url': video_url
+                    }
+                    
+                    # Save video data
+                    await save_video(video_data, email_uuid)
+                    logger.info(f"Data saved to Supabase: email={email_uuid}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to save to Supabase: {e}")
+                    # Continue even if Supabase fails
             
             logger.info("email_processing_completed", extra={
                 "email_id": parsed_email['id'],
                 "video_url": video_url,
                 "duration_ms": duration * 1000,
-                "pipeline_success": True
+                "pipeline_success": True,
+                "supabase_saved": email_uuid is not None
             })
             
             # Track success metrics (mock)
@@ -174,7 +197,8 @@ async def get_fallback_video(email_data: Dict[str, Any]) -> str:
         }
         
         # Try to assemble with minimal data
-        video_url = await assemble_video(audio_url, minimal_email)
+        fallback_script = f"New email from {from_sender}"
+        video_url = await assemble_video(audio_url, minimal_email, fallback_script)
         
         logger.info(f"fallback_video_generated: {video_url}")
         return video_url
