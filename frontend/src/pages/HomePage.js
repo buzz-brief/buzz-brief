@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Asset } from 'expo-asset';
 
 export default function HomePage({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
+
+  useEffect(() => {
+    // Preload the logo image for faster display
+    const preloadLogo = async () => {
+      try {
+        const logoAsset = Asset.fromModule(require('../../assets/Adobe Express - file.png'));
+        await logoAsset.downloadAsync();
+        setLogoLoaded(true);
+      } catch (error) {
+        console.log('Logo preload error:', error);
+        setLogoLoaded(true); // Still show the image even if preload fails
+      }
+    };
+    preloadLogo();
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -39,6 +56,9 @@ export default function HomePage({ navigation }) {
             source={require('../../assets/Adobe Express - file.png')}
             style={styles.logoImage}
             resizeMode="contain"
+            fadeDuration={0}
+            onLoad={() => setLogoLoaded(true)}
+            onError={() => setLogoLoaded(true)}
           />
         </View>
         
