@@ -90,7 +90,7 @@ async def process_email(email_data: Dict[str, Any]) -> Optional[str]:
         
         # Step 4: Assemble video (critical step)
         try:
-            video_url = await assemble_video(audio_url, parsed_email)
+            video_url = await assemble_video(audio_url, parsed_email, script)
             
             duration = time.time() - start_time
             
@@ -174,7 +174,8 @@ async def get_fallback_video(email_data: Dict[str, Any]) -> str:
         }
         
         # Try to assemble with minimal data
-        video_url = await assemble_video(audio_url, minimal_email)
+        fallback_script = f"New email from {from_sender}"
+        video_url = await assemble_video(audio_url, minimal_email, fallback_script)
         
         logger.info(f"fallback_video_generated: {video_url}")
         return video_url
