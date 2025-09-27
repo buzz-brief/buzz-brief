@@ -111,11 +111,6 @@ export default function VideoFeed({ navigation }) {
             : video
         )
       );
-      
-      Alert.alert(
-        'Video Flagged',
-        `Video "${video.title}" has been ${newFlaggedState ? 'flagged' : 'unflagged'}`
-      );
     } catch (error) {
       console.error('Error handling flag video:', error);
       Alert.alert('Error', 'Failed to update video flag status');

@@ -1,35 +1,67 @@
-import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  FlatList, 
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  FlatList,
   TextInput,
   SafeAreaView,
   Linking,
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-// Hardcoded flagged emails data
-const flaggedEmails = [
-  { id: '1', subject: 'Urgent: Project deadline approaching', flagged: true },
-  { id: '2', subject: 'Meeting notes from yesterday', flagged: true },
-  { id: '3', subject: 'Important: Budget review required', flagged: true },
-  { id: '4', subject: 'Client feedback on latest proposal', flagged: true },
-  { id: '5', subject: 'Team building event this Friday', flagged: true },
-  { id: '6', subject: 'Security update for all systems', flagged: true },
-  { id: '7', subject: 'Quarterly report due next week', flagged: true },
-  { id: '8', subject: 'New hire onboarding schedule', flagged: true },
-  { id: '9', subject: 'Vendor contract renewal', flagged: true },
-  { id: '10', subject: 'Performance review reminders', flagged: true },
-];
+import { supabase } from '../config/supabase';
 
 export default function NewPage({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [emails, setEmails] = useState(flaggedEmails);
-  const [filteredEmails, setFilteredEmails] = useState(flaggedEmails);
+  const [emails, setEmails] = useState([]);
+  const [filteredEmails, setFilteredEmails] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadFlaggedEmails();
+  }, []);
+
+  const loadFlaggedEmails = async () => {
+    try {
+      // Fetch flagged videos from Supabase database
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('is_flagged', true) // Only get flagged videos
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        Alert.alert('Error', 'Failed to load flagged emails from database');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const emailList = data.map((video) => ({
+          id: video.id,
+          subject: video.title || 'Untitled Video',
+          flagged: video.is_flagged,
+          video_url: video.video_url,
+          created_at: video.created_at,
+        }));
+
+        console.log('Loaded flagged emails from Supabase:', emailList);
+        setEmails(emailList);
+        setFilteredEmails(emailList);
+      } else {
+        console.log('No flagged emails found in database');
+        setEmails([]);
+        setFilteredEmails([]);
+      }
+    } catch (error) {
+      console.error('Error loading flagged emails from Supabase:', error);
+      Alert.alert('Error', 'Failed to load flagged emails');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -43,18 +75,36 @@ export default function NewPage({ navigation }) {
     }
   };
 
-  const handleDeleteEmail = (emailId) => {
-    const updatedEmails = emails.filter(email => email.id !== emailId);
-    setEmails(updatedEmails);
-    
-    // Update filtered emails based on current search
-    if (searchQuery.trim() === '') {
-      setFilteredEmails(updatedEmails);
-    } else {
-      const filtered = updatedEmails.filter(email =>
-        email.subject.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredEmails(filtered);
+  const handleDeleteEmail = async (emailId) => {
+    try {
+      // Update the database to unflag the video
+      const { error } = await supabase
+        .from('videos')
+        .update({ is_flagged: false })
+        .eq('id', emailId);
+
+      if (error) {
+        console.error('Error updating flag status:', error);
+        Alert.alert('Error', 'Failed to remove email from flagged list');
+        return;
+      }
+
+      // Update local state
+      const updatedEmails = emails.filter(email => email.id !== emailId);
+      setEmails(updatedEmails);
+
+      // Update filtered emails based on current search
+      if (searchQuery.trim() === '') {
+        setFilteredEmails(updatedEmails);
+      } else {
+        const filtered = updatedEmails.filter(email =>
+          email.subject.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setFilteredEmails(filtered);
+      }
+    } catch (error) {
+      console.error('Error handling delete email:', error);
+      Alert.alert('Error', 'Failed to remove email from flagged list');
     }
   };
 
@@ -124,19 +174,27 @@ export default function NewPage({ navigation }) {
         />
       </View>
 
-      <View style={styles.content}>
-        <Text style={styles.resultsText}>
-          {filteredEmails.length} flagged email{filteredEmails.length !== 1 ? 's' : ''}
-        </Text>
-        
-        <FlatList
-          data={filteredEmails}
-          renderItem={renderEmailItem}
-          keyExtractor={(item) => item.id}
-          style={styles.emailList}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
+          <View style={styles.content}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading flagged emails...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.resultsText}>
+                  {filteredEmails.length} flagged email{filteredEmails.length !== 1 ? 's' : ''}
+                </Text>
+
+                <FlatList
+                  data={filteredEmails}
+                  renderItem={renderEmailItem}
+                  keyExtractor={(item) => item.id}
+                  style={styles.emailList}
+                  showsVerticalScrollIndicator={false}
+                />
+              </>
+            )}
+          </View>
     </SafeAreaView>
   );
 }
@@ -220,5 +278,15 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(255,68,68,0.1)',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  loadingText: {
+    color: '#CCCCCC',
+    fontSize: 16,
   },
 });
