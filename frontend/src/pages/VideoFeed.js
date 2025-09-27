@@ -11,10 +11,8 @@ import {
 } from 'react-native';
 import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import { Asset } from 'expo-asset';
-import manifest from '../../videos.manifest.js';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { supabase } from '../config/supabase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,46 +48,78 @@ export default function VideoFeed({ navigation }) {
   }, []);
 
   
-const loadVideos = async () => {
+  const loadVideos = async () => {
     try {
-      // Load bundled assets and resolve local URIs
-      const assets = await Asset.loadAsync(manifest);
+      // Fetch videos from Supabase database
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5); // Order by newest first
 
-      console.log(assets);
-  
-      const videoList = assets.map((a, index) => ({
-        id: String(index),
-        uri: a.localUri ?? a.uri, // local file path provided by bundler
-        title: `Video ${index + 1}`,
-        description: `This is video ${index + 1}`,
-        isFlagged: false,
-      }));
+      if (error) {
+        console.error('Supabase error:', error);
+        Alert.alert('Error', 'Failed to load videos from database');
+        return;
+      }
 
-      console.log(videoList);
-  
-      setVideos(videoList);
-    } catch (e) {
-      console.error('Error loading bundled videos:', e);
+      if (data && data.length > 0) {
+        const videoList = data.map((video, index) => ({
+          id: video.id || String(index),
+          uri: video.video_url, // URL from Supabase Storage bucket
+          title: video.title || `Video ${index + 1}`,
+          description: video.description || `This is video ${index + 1}`,
+          isFlagged: video.is_flagged || false,
+        }));
+
+        console.log('Loaded videos from Supabase:', videoList);
+        setVideos(videoList);
+      } else {
+        console.log('No videos found in database');
+        setVideos([]);
+      }
+    } catch (error) {
+      console.error('Error loading videos from Supabase:', error);
       Alert.alert('Error', 'Failed to load videos');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFlagVideo = (videoId) => {
-    setVideos(prevVideos =>
-      prevVideos.map(video =>
-        video.id === videoId
-          ? { ...video, isFlagged: !video.isFlagged }
-          : video
-      )
-    );
-    
+  const handleFlagVideo = async (videoId) => {
     const video = videos.find(v => v.id === videoId);
-    Alert.alert(
-      'Video Flagged',
-      `Video "${video.title}" has been ${video.isFlagged ? 'unflagged' : 'flagged'}`
-    );
+    const newFlaggedState = !video.isFlagged;
+    
+    try {
+      // Update the database
+      const { error } = await supabase
+        .from('videos')
+        .update({ is_flagged: newFlaggedState })
+        .eq('id', videoId);
+
+      if (error) {
+        console.error('Error updating flag status:', error);
+        Alert.alert('Error', 'Failed to update flag status');
+        return;
+      }
+
+      // Update local state
+      setVideos(prevVideos =>
+        prevVideos.map(video =>
+          video.id === videoId
+            ? { ...video, isFlagged: newFlaggedState }
+            : video
+        )
+      );
+      
+      Alert.alert(
+        'Video Flagged',
+        `Video "${video.title}" has been ${newFlaggedState ? 'flagged' : 'unflagged'}`
+      );
+    } catch (error) {
+      console.error('Error handling flag video:', error);
+      Alert.alert('Error', 'Failed to update video flag status');
+    }
   };
 
   const navigateToNewPage = () => {
