@@ -168,6 +168,9 @@ async def generate_audio(script: str) -> str:
         available_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
         selected_voice = random.choice(available_voices)
         logger.info(f"Selected TTS voice: {selected_voice}")
+        
+        # Store the selected voice for later retrieval
+        generate_audio.last_voice = selected_voice
             
         response = await openai_client.audio.speech.create(
             model="tts-1",
@@ -301,6 +304,10 @@ async def assemble_video(audio_url: str, email_data: Dict[str, Any], script: str
         # Get background video using new configuration system
         email_content = f"{email_data.get('subject', '')} {email_data.get('body', '')}"
         background_path = config_get_background_video(email_content=email_content)
+        
+        # Store the background video filename for later retrieval
+        background_filename = os.path.basename(background_path)
+        assemble_video.last_background_video = background_filename
         
         # Check if background video exists
         if not os.path.exists(background_path):
