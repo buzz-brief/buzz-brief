@@ -1,0 +1,12 @@
+${PODS_ROOT}/Target Support Files/Pods-buzzBrief/Pods-buzzBrief-resources.sh
+${PODS_CONFIGURATION_BUILD_DIR}/AppAuth/AppAuthCore_Privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth/GTMAppAuth_Privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher/GTMSessionFetcher_Core_Privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn/GoogleSignIn.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/GoogleUtilities/GoogleUtilities_Privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/PromisesObjC/FBLPromises_Privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/boost/boost_privacy.bundle
+${PODS_CONFIGURATION_BUILD_DIR}/glog/glog_privacy.bundle

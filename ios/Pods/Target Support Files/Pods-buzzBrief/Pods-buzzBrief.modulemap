@@ -1,0 +1,6 @@
+module Pods_buzzBrief {
+  umbrella header "Pods-buzzBrief-umbrella.h"
+
+  export *
+  module * { export * }
+}
