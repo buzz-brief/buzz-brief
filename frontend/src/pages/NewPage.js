@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/supabase';
+import { flagCache } from '../services/flagCache';
 
 export default function NewPage({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +49,10 @@ export default function NewPage({ navigation }) {
         }));
 
         console.log('Loaded flagged emails from Supabase:', emailList);
+        
+        // Update cache with all flagged videos
+        flagCache.updateMultiple(data);
+        
         setEmails(emailList);
         setFilteredEmails(emailList);
       } else {
@@ -88,6 +93,9 @@ export default function NewPage({ navigation }) {
         Alert.alert('Error', 'Failed to remove email from flagged list');
         return;
       }
+
+      // Update cache - set flag status to false
+      flagCache.setFlagStatus(emailId, false);
 
       // Update local state
       const updatedEmails = emails.filter(email => email.id !== emailId);

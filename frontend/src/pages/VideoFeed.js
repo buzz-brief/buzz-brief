@@ -12,7 +12,9 @@ import {
 import { Video } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../config/supabase';
+import { flagCache } from '../services/flagCache';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,6 +28,38 @@ export default function VideoFeed({ navigation }) {
 
   useEffect(() => {
     loadVideos();
+
+    // Set up real-time subscription to listen for changes
+    const subscription = supabase
+      .channel('videos_changes')
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'videos'
+        },
+        (payload) => {
+          console.log('Video updated:', payload);
+          
+          // Update cache with new flag status
+          flagCache.setFlagStatus(payload.new.id, payload.new.is_flagged);
+          
+          // Update the local state when a video is updated
+          setVideos(prevVideos =>
+            prevVideos.map(video =>
+              video.id === payload.new.id
+                ? { ...video, isFlagged: payload.new.is_flagged }
+                : video
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -47,7 +81,28 @@ export default function VideoFeed({ navigation }) {
     setAudioMode();
   }, []);
 
-  
+  // Update flag status from cache when the page comes into focus (e.g., when swiping back)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('VideoFeed page focused - updating flag status from cache');
+      updateFlagStatusFromCache();
+    }, [])
+  );
+
+  const updateFlagStatusFromCache = () => {
+    // Only update flag status from cache without reloading videos
+    setVideos(prevVideos =>
+      prevVideos.map(video => {
+        const cachedFlagStatus = flagCache.getFlagStatus(video.id);
+        if (cachedFlagStatus !== undefined && cachedFlagStatus !== video.isFlagged) {
+          console.log(`Cache: Updating video ${video.id} flag status from ${video.isFlagged} to ${cachedFlagStatus}`);
+          return { ...video, isFlagged: cachedFlagStatus };
+        }
+        return video;
+      })
+    );
+  };
+
   const loadVideos = async () => {
     try {
       // Fetch videos from Supabase database
@@ -63,17 +118,27 @@ export default function VideoFeed({ navigation }) {
         return;
       }
 
-      if (data && data.length > 0) {
-        const videoList = data.map((video, index) => ({
-          id: video.id || String(index),
-          uri: video.video_url, // URL from Supabase Storage bucket
-          title: video.title || `Video ${index + 1}`,
-          description: video.description || `This is video ${index + 1}`,
-          isFlagged: video.is_flagged || false,
-        }));
+          if (data && data.length > 0) {
+            const videoList = data.map((video, index) => {
+              // Check cache first, then fallback to database value
+              const cachedFlagStatus = flagCache.getFlagStatus(video.id);
+              const isFlagged = cachedFlagStatus !== undefined ? cachedFlagStatus : (video.is_flagged || false);
+              
+              return {
+                id: video.id || String(index),
+                uri: video.video_url, // URL from Supabase Storage bucket
+                title: video.title || `Video ${index + 1}`,
+                description: video.description || `This is video ${index + 1}`,
+                isFlagged: isFlagged,
+              };
+            });
 
-        console.log('Loaded videos from Supabase:', videoList);
-        setVideos(videoList);
+            console.log('Loaded videos from Supabase:', videoList);
+            
+            // Update cache with all videos
+            flagCache.updateMultiple(data);
+            
+            setVideos(videoList);
       } else {
         console.log('No videos found in database');
         setVideos([]);
@@ -102,6 +167,9 @@ export default function VideoFeed({ navigation }) {
         Alert.alert('Error', 'Failed to update flag status');
         return;
       }
+
+      // Update cache
+      flagCache.setFlagStatus(videoId, newFlaggedState);
 
       // Update local state
       setVideos(prevVideos =>
