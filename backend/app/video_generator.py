@@ -88,7 +88,8 @@ async def process_email(email_data: Dict[str, Any]) -> Optional[str]:
                 "error": str(e),
                 "fallback": "using_default_audio"
             })
-            audio_url = os.path.abspath("assets/default_audio.mp3")
+            from app.video_assembly import get_fallback_audio_path
+            audio_url = get_fallback_audio_path()
         
         # Step 4: Assemble video (critical step)
         try:

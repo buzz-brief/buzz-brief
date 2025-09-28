@@ -320,29 +320,38 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
             try:
                 logger.info(f"processing_email: {i+1}/{len(emails)} - {email.get('email_id', 'unknown')}")
                 
-                # Create email text content
-                email_text = f"Subject: {email.get('subject', 'No Subject')}\n\n{email.get('body', 'No content')}"
+                # Just save the email to database, skip video generation for now
+                from app.supabase_client_simple import save_email
                 
-                # Parse email text into structured data and process
-                email_data = parse_email_text(email_text)
-                video_url = await process_email(email_data)
-                
-                if video_url:
-                    successful_count += 1
-                    results.append({
-                        "email_id": email.get('email_id'),
-                        "success": True,
-                        "video_url": video_url,
-                        "message": "Email converted to video successfully"
+                try:
+                    email_uuid = await save_email({
+                        'id': email.get('email_id'),
+                        'subject': email.get('subject', 'No Subject'),
+                        'body': email.get('body', 'No content')
                     })
-                    logger.info(f"email_processed_success: {email.get('email_id')}")
-                else:
+                    
+                    if email_uuid:
+                        successful_count += 1
+                        results.append({
+                            "email_id": email.get('email_id'),
+                            "success": True,
+                            "message": "Email saved to database successfully"
+                        })
+                        logger.info(f"email_saved_success: {email.get('email_id')}")
+                    else:
+                        results.append({
+                            "email_id": email.get('email_id'),
+                            "success": False,
+                            "error": "Failed to save email to database"
+                        })
+                        logger.error(f"email_save_failed: {email.get('email_id')}")
+                except Exception as save_error:
+                    logger.error(f"email_save_error: {email.get('email_id')} - {save_error}")
                     results.append({
                         "email_id": email.get('email_id'),
                         "success": False,
-                        "error": "Video generation failed"
+                        "error": str(save_error)
                     })
-                    logger.error(f"email_processed_failed: {email.get('email_id')}")
                     
             except Exception as email_error:
                 logger.error(f"email_processing_error: {email.get('email_id', 'unknown')} - {email_error}")
@@ -363,7 +372,7 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
             "successful_emails": successful_count,
             "failed_emails": len(emails) - successful_count,
             "results": results,
-            "message": f"Batch processing completed: {successful_count}/{len(emails)} emails converted to videos"
+            "message": f"Batch processing completed: {successful_count}/{len(emails)} emails saved to database"
         }
         
     except Exception as e:

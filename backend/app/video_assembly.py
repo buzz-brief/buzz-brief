@@ -162,12 +162,12 @@ async def generate_audio(script: str) -> str:
     try:
         if not script or len(script.strip()) < 5:
             logger.warning("Empty or too short script, using fallback audio")
-            return os.path.abspath("assets/default_audio.mp3")
+            return get_fallback_audio_path()
         
         # Generate audio using OpenAI TTS
         if not openai_client:
             logger.warning("OpenAI client not configured, using fallback audio")
-            return os.path.abspath("assets/default_audio.mp3")
+            return get_fallback_audio_path()
         
         # Select random voice for variety
         available_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
@@ -200,7 +200,44 @@ async def generate_audio(script: str) -> str:
         
     except Exception as e:
         logger.error(f"Audio generation failed: {e}")
-        return os.path.abspath("assets/default_audio.mp3")
+        return get_fallback_audio_path()
+
+
+def get_fallback_audio_path() -> str:
+    """
+    Get fallback audio path, trying multiple options if default_audio.mp3 is missing.
+    
+    Returns:
+        Absolute path to a working audio file
+    """
+    # Try default_audio.mp3 first
+    default_path = os.path.abspath("assets/default_audio.mp3")
+    if os.path.exists(default_path):
+        logger.info(f"Using default audio: {default_path}")
+        return default_path
+    
+    # If default is missing, try background music files
+    background_music_dir = "assets/audio/background_music"
+    if os.path.exists(background_music_dir):
+        music_files = [f for f in os.listdir(background_music_dir) if f.endswith('.mp3')]
+        if music_files:
+            fallback_path = os.path.abspath(os.path.join(background_music_dir, music_files[0]))
+            logger.warning(f"default_audio.mp3 missing, using fallback: {fallback_path}")
+            return fallback_path
+    
+    # Last resort - create the default audio file
+    try:
+        if os.path.exists("assets/audio/background_music/sample_bg.mp3"):
+            import shutil
+            shutil.copy("assets/audio/background_music/sample_bg.mp3", "assets/default_audio.mp3")
+            logger.info("Recreated default_audio.mp3 from sample_bg.mp3")
+            return os.path.abspath("assets/default_audio.mp3")
+    except Exception as e:
+        logger.error(f"Failed to create default_audio.mp3: {e}")
+    
+    # If all fails, return the path anyway (will cause FFmpeg error but won't crash)
+    logger.error("No fallback audio found - video generation will likely fail")
+    return default_path
 
 
 def create_color_background() -> str:
