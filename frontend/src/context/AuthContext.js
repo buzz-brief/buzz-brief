@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
           console.log("🚀 STARTING: Calling backend to fetch and process Gmail emails...");
           
           // Call the new backend endpoint that handles everything
-          const response = await fetch('http://localhost:8001/fetch-and-process-gmail', {
+          const response = await fetch('http://localhost:8001/process-email', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

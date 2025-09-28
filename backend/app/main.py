@@ -375,7 +375,7 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
                                         "video_url": video_url,
                                         "message": "Email saved and video created successfully"
                                     })
-                                logger.info(f"video_created_success: {email.get('email_id')} -> {video_url}")
+                                    logger.info(f"video_created_success: {email.get('email_id')} -> {video_url}")
                                 else:
                                     results.append({
                                         "email_id": email.get('email_id'),

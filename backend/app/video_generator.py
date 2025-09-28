@@ -8,6 +8,9 @@ from app.email_parser import parse_email, EmailParseError
 from app.script_generator import generate_script_with_retry, ScriptGenerationError
 from app.video_assembly import assemble_video, generate_audio, VideoAssemblyError
 from app.supabase_client_simple import save_email, save_video, is_supabase_available
+from dotenv import load_dotenv
+load_dotenv()  # looks for .env in current working directory
+
 
 logger = logging.getLogger(__name__)
 
