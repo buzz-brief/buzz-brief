@@ -24,6 +24,9 @@ export default function VideoFeed({ navigation }) {
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoPlayStates, setVideoPlayStates] = useState({});
+  const [showPlayPauseButton, setShowPlayPauseButton] = useState(false);
+  const videoRefs = useRef({});
 
 
   useEffect(() => {
@@ -151,6 +154,45 @@ export default function VideoFeed({ navigation }) {
     }
   };
 
+  const togglePlayPause = async () => {
+    console.log('🎬 Toggle play/pause tapped!');
+    const currentVideo = videos[currentIndex];
+    if (!currentVideo) {
+      console.log('❌ No current video found');
+      return;
+    }
+
+    const videoRef = videoRefs.current[currentVideo.id];
+    if (!videoRef) {
+      console.log('❌ No video ref found for:', currentVideo.id);
+      return;
+    }
+
+    // Get current play state for this specific video (default to true)
+    const currentPlayState = videoPlayStates[currentVideo.id] !== false;
+    console.log('📹 Current play state:', currentPlayState, 'for video:', currentVideo.id);
+
+    try {
+      if (currentPlayState) {
+        console.log('⏸️ Pausing video');
+        await videoRef.pauseAsync();
+        setVideoPlayStates(prev => ({ ...prev, [currentVideo.id]: false }));
+      } else {
+        console.log('▶️ Playing video');
+        await videoRef.playAsync();
+        setVideoPlayStates(prev => ({ ...prev, [currentVideo.id]: true }));
+      }
+
+      // Show play/pause button temporarily when toggling
+      setShowPlayPauseButton(true);
+      setTimeout(() => {
+        setShowPlayPauseButton(false);
+      }, 1500);
+    } catch (error) {
+      console.log('❌ Error toggling play/pause:', error);
+    }
+  };
+
   const handleFlagVideo = async (videoId) => {
     const video = videos.find(v => v.id === videoId);
     const newFlaggedState = !video.isFlagged;
@@ -200,7 +242,24 @@ export default function VideoFeed({ navigation }) {
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
+      const newIndex = viewableItems[0].index;
+      const newVideo = videos[newIndex];
+      
+      if (newVideo) {
+        // Always set the new video to playing when it becomes current
+        setVideoPlayStates(prev => ({ ...prev, [newVideo.id]: true }));
+        
+        // Start playing the new video
+        const newVideoRef = videoRefs.current[newVideo.id];
+        if (newVideoRef) {
+          newVideoRef.playAsync().catch(console.log);
+        }
+      }
+      
+      setCurrentIndex(newIndex);
+      
+      // Hide the play/pause button when swiping to new videos
+      setShowPlayPauseButton(false);
     }
   }).current;
 
@@ -212,9 +271,14 @@ export default function VideoFeed({ navigation }) {
   const renderVideo = ({ item, index }) => (
     <View style={styles.videoContainer}>
       <Video
+        ref={(ref) => {
+          if (ref) {
+            videoRefs.current[item.id] = ref;
+          }
+        }}
         source={{ uri: item.uri }}
         style={styles.video}
-        shouldPlay={index === currentIndex}
+        shouldPlay={index === currentIndex && (videoPlayStates[item.id] !== false)}
         isLooping
         resizeMode="cover"
         isMuted={isMuted}
@@ -222,12 +286,37 @@ export default function VideoFeed({ navigation }) {
         audioPan={0.0}
         rate={1.0}
         useNativeControls={false}
+        pointerEvents="none"
         onPlaybackStatusUpdate={(status) => {
           if (status.isLoaded && status.error) {
             console.log('Video error:', status.error);
           }
         }}
       />
+
+      {/* Tap area for play/pause */}
+      <TouchableOpacity
+        style={styles.tapArea}
+        onPressIn={togglePlayPause}
+        activeOpacity={1}
+        delayPressIn={0}
+        delayPressOut={0}
+      />
+
+      {/* Play/Pause Button Overlay */}
+      {index === currentIndex && (
+        (showPlayPauseButton || videoPlayStates[item.id] === false) && (
+          <View style={styles.playPauseOverlay}>
+            <View style={styles.playPauseButton}>
+              <Ionicons
+                name={(videoPlayStates[item.id] !== false) ? "pause" : "play"}
+                size={60}
+                color="rgba(255,255,255,0.8)"
+              />
+            </View>
+          </View>
+        )
+      )}
       
       {/* Video Overlay */}
       <View style={styles.overlay}>
@@ -378,6 +467,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 100,
     paddingHorizontal: 20,
+    zIndex: 6,
   },
   backButton: {
     position: 'absolute',
@@ -386,7 +476,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 10,
-    zIndex: 1,
+    zIndex: 10,
   },
   flagButton: {
     position: 'absolute',
@@ -397,6 +487,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
+    zIndex: 7,
   },
   muteButton: {
     position: 'absolute',
@@ -407,6 +498,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
+    zIndex: 7,
   },
   flagButtonActive: {
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -489,5 +581,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
     padding: 8,
+  },
+  // Play/Pause Styles
+  tapArea: {
+    position: 'absolute',
+    width: 150,               // make it as big as you want
+    height: 150,
+    top: height / 2 - 75,     // center vertically
+    left: width / 2 - 75,     // center horizontally
+    zIndex: 8,
+    backgroundColor: 'transparent',
+  },
+  playPauseOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  playPauseButton: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 50,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
