@@ -108,40 +108,65 @@ export default function VideoFeed({ navigation }) {
 
   const loadVideos = async () => {
     try {
-      // Fetch videos from Supabase database
-      const { data, error } = await supabase
+      // First, fetch videos from Supabase database
+      const { data: videosData, error: videosError } = await supabase
         .from('videos')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5); // Order by newest first
+        .limit(5);
 
-      if (error) {
-        console.error('Supabase error:', error);
+      if (videosError) {
+        console.error('Supabase videos error:', videosError);
         Alert.alert('Error', 'Failed to load videos from database');
         return;
       }
 
-          if (data && data.length > 0) {
-            const videoList = data.map((video, index) => {
-              // Check cache first, then fallback to database value
-              const cachedFlagStatus = flagCache.getFlagStatus(video.id);
-              const isFlagged = cachedFlagStatus !== undefined ? cachedFlagStatus : (video.is_flagged || false);
-              
-              return {
-                id: video.id || String(index),
-                uri: video.video_url, // URL from Supabase Storage bucket
-                title: video.title || `Video ${index + 1}`,
-                description: video.description || `This is video ${index + 1}`,
-                isFlagged: isFlagged,
-              };
-            });
+      if (videosData && videosData.length > 0) {
+        // Get all unique email IDs from videos
+        const emailIds = videosData
+          .map(video => video.email_id)
+          .filter(id => id !== null && id !== undefined);
 
-            console.log('Loaded videos from Supabase:', videoList);
-            
-            // Update cache with all videos
-            flagCache.updateMultiple(data);
-            
-            setVideos(videoList);
+        // Fetch email subjects for these IDs
+        let emailSubjects = {};
+        if (emailIds.length > 0) {
+          const { data: emailsData, error: emailsError } = await supabase
+            .from('emails')
+            .select('id, subject, body')
+            .in('id', emailIds);
+
+          if (!emailsError && emailsData) {
+            emailSubjects = emailsData.reduce((acc, email) => {
+              acc[email.id] = email.subject;
+              return acc;
+            }, {});
+          }
+        }
+
+        const videoList = videosData.map((video, index) => {
+          // Check cache first, then fallback to database value
+          const cachedFlagStatus = flagCache.getFlagStatus(video.id);
+          const isFlagged = cachedFlagStatus !== undefined ? cachedFlagStatus : (video.is_flagged || false);
+          
+          // Get email subject from the fetched email data
+          const emailSubject = emailSubjects[video.email_id] || `Video ${index + 1}`;
+          
+          return {
+            id: video.id || String(index),
+            uri: video.video_url, // URL from Supabase Storage bucket
+            title: emailSubject, // Use email subject as title
+            description: video.description || `This is video ${index + 1}`,
+            isFlagged: isFlagged,
+            emailId: video.email_id, // Store email ID for reference
+          };
+        });
+
+        console.log('Loaded videos with email subjects from Supabase:', videoList);
+        
+        // Update cache with all videos
+        flagCache.updateMultiple(videosData);
+        
+        setVideos(videoList);
       } else {
         console.log('No videos found in database');
         setVideos([]);
@@ -360,12 +385,16 @@ export default function VideoFeed({ navigation }) {
   );
 
 
-  const renderFooter = () => (
-    <View style={styles.footer}>
-      <View style={styles.footerContent}>
-        <Text style={styles.footerText}>
-          title of email {currentIndex + 1}
-        </Text>
+  const renderFooter = () => {
+    const currentVideo = videos[currentIndex];
+    const emailSubject = currentVideo?.title || `Video ${currentIndex + 1}`;
+    
+    return (
+      <View style={styles.footer}>
+        <View style={styles.footerContent}>
+          <Text style={styles.footerText}>
+            {emailSubject}
+          </Text>
         <TouchableOpacity
           style={styles.navButton}
           onPress={navigateToNewPage}
@@ -375,6 +404,7 @@ export default function VideoFeed({ navigation }) {
       </View>
     </View>
   );
+  };
 
   const renderNoVideos = () => (
     <View style={styles.noVideosContainer}>
