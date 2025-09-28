@@ -389,10 +389,17 @@ export default function VideoFeed({ navigation }) {
     const currentVideo = videos[currentIndex];
     const emailSubject = currentVideo?.title || `Video ${currentIndex + 1}`;
     
+    // Dynamic font size based on text length
+    const getFontSize = (text) => {
+      if (text.length > 50) return 12;
+      if (text.length > 30) return 14;
+      return 16;
+    };
+    
     return (
       <View style={styles.footer}>
         <View style={styles.footerContent}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { fontSize: getFontSize(emailSubject) }]}>
             {emailSubject}
           </Text>
         <TouchableOpacity
@@ -606,6 +613,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF', // White text
     fontSize: 16,
     fontWeight: '600',
+    flex: 1,
+    flexWrap: 'wrap',
+    marginRight: 15,
+    lineHeight: 20,
   },
   navButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
