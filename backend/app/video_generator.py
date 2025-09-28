@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import time
 import traceback
 from typing import Dict, Any, Optional
@@ -87,7 +88,7 @@ async def process_email(email_data: Dict[str, Any]) -> Optional[str]:
                 "error": str(e),
                 "fallback": "using_default_audio"
             })
-            audio_url = "assets/default_audio.mp3"
+            audio_url = os.path.abspath("assets/default_audio.mp3")
         
         # Step 4: Assemble video (critical step)
         try:

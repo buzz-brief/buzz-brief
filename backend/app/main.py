@@ -294,6 +294,86 @@ async def convert_email_to_video(request: Dict[str, Any], background_tasks: Back
         )
 
 
+@app.post("/convert-emails-to-videos-batch")
+async def convert_emails_to_videos_batch(request: Dict[str, Any]):
+    """
+    Batch endpoint to clear tables and convert multiple emails to videos
+    Expected format: {"emails": [list of email objects]}
+    """
+    try:
+        emails = request.get('emails', [])
+        if not emails:
+            raise HTTPException(status_code=400, detail="No emails provided")
+        
+        logger.info(f"batch_processing_started: Processing {len(emails)} emails")
+        
+        # Clear both tables first
+        from app.supabase_client_simple import clear_all_tables
+        logger.info("clearing_tables: Clearing emails and videos tables")
+        await clear_all_tables()
+        
+        results = []
+        successful_count = 0
+        
+        # Process each email
+        for i, email in enumerate(emails):
+            try:
+                logger.info(f"processing_email: {i+1}/{len(emails)} - {email.get('email_id', 'unknown')}")
+                
+                # Create email text content
+                email_text = f"Subject: {email.get('subject', 'No Subject')}\n\n{email.get('body', 'No content')}"
+                
+                # Parse email text into structured data and process
+                email_data = parse_email_text(email_text)
+                video_url = await process_email(email_data)
+                
+                if video_url:
+                    successful_count += 1
+                    results.append({
+                        "email_id": email.get('email_id'),
+                        "success": True,
+                        "video_url": video_url,
+                        "message": "Email converted to video successfully"
+                    })
+                    logger.info(f"email_processed_success: {email.get('email_id')}")
+                else:
+                    results.append({
+                        "email_id": email.get('email_id'),
+                        "success": False,
+                        "error": "Video generation failed"
+                    })
+                    logger.error(f"email_processed_failed: {email.get('email_id')}")
+                    
+            except Exception as email_error:
+                logger.error(f"email_processing_error: {email.get('email_id', 'unknown')} - {email_error}")
+                results.append({
+                    "email_id": email.get('email_id'),
+                    "success": False,
+                    "error": str(email_error)
+                })
+        
+        # Track metrics
+        metrics.increment('batch_emails_processed', successful_count)
+        
+        logger.info(f"batch_processing_completed: {successful_count}/{len(emails)} emails processed successfully")
+        
+        return {
+            "success": True,
+            "total_emails": len(emails),
+            "successful_emails": successful_count,
+            "failed_emails": len(emails) - successful_count,
+            "results": results,
+            "message": f"Batch processing completed: {successful_count}/{len(emails)} emails converted to videos"
+        }
+        
+    except Exception as e:
+        logger.error(f"batch_processing_failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Batch processing failed: {str(e)}"
+        )
+
+
 @app.post("/process-email")
 async def process_single_email(email_data: Dict[str, Any], background_tasks: BackgroundTasks):
     """

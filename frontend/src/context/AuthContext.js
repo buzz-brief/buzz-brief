@@ -41,6 +41,90 @@ export const AuthProvider = ({ children }) => {
     console.log("Storage disabled - no need to clear storage");
   };
 
+  // Function to process emails for video generation
+  const processEmailsForVideoGeneration = async (emailData) => {
+    try {
+          console.log("🎬 Processing emails for video generation...");
+          console.log("📧 Total emails to process:", emailData.length);
+      const { supabase } = await import('../config/supabase');
+      
+      // Get existing email IDs from Supabase
+      const { data: existingEmails, error: fetchError } = await supabase
+        .from('emails')
+        .select('email_id');
+      
+      if (fetchError) {
+        console.error('Error fetching existing emails:', fetchError);
+        return;
+      }
+      
+      const existingEmailIds = new Set(existingEmails?.map(email => email.email_id) || []);
+      console.log("Existing email IDs:", Array.from(existingEmailIds));
+      
+      // Filter out emails that already exist
+      const newEmails = emailData.filter(email => !existingEmailIds.has(email.email_id));
+      console.log(`🔍 FILTERING: Found ${newEmails.length} new emails out of ${emailData.length} total emails`);
+      
+      if (newEmails.length === 0) {
+        console.log("No new emails to process - all emails already exist in database");
+        return;
+      }
+      
+      // Process each new email individually
+      for (const email of newEmails) {
+        try {
+          console.log(`🎥 Processing email ${email.email_id} for video generation...`);
+          console.log("📧 Email subject:", email.subject);
+          console.log("🔗 Backend URL:", 'http://localhost:8001/convert-email-to-video');
+          
+          // Create email text content for the backend
+          const emailText = `Subject: ${email.subject}\n\n${email.body}`;
+          
+          // Call convert-email-to-video endpoint
+          const response = await fetch('http://localhost:8001/convert-email-to-video', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email_text: emailText
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`Successfully converted email ${email.email_id} to video:`, result);
+            
+            // Save email to Supabase after successful video generation
+            const { error: insertError } = await supabase
+              .from('emails')
+              .insert([{
+                email_id: email.email_id,
+                subject: email.subject,
+                body: email.body,
+                created_at: email.created_at
+              }]);
+
+            if (insertError) {
+              console.error(`Error saving email ${email.email_id} to database:`, insertError);
+            } else {
+              console.log(`Successfully saved email ${email.email_id} to database`);
+            }
+          } else {
+            const errorData = await response.json();
+            console.error(`Error converting email ${email.email_id} to video:`, errorData);
+          }
+        } catch (emailError) {
+          console.error(`Error processing email ${email.email_id}:`, emailError);
+        }
+      }
+      
+      console.log(`Finished processing ${newEmails.length} new emails for video generation`);
+    } catch (error) {
+      console.error("Error in processEmailsForVideoGeneration:", error);
+    }
+  };
+
   const signIn = async () => {
     setIsSigningIn(true);
 
@@ -53,27 +137,41 @@ export const AuthProvider = ({ children }) => {
         // Try to save to storage, but don't let storage failures break sign-in
         await saveUserToStorage(result.user, result.accessToken);
         
-        // Automatically fetch and save Gmail emails after successful sign-in
+        // Automatically fetch and process Gmail emails after successful sign-in
         try {
-          console.log("Automatically fetching Gmail emails after sign-in...");
+          console.log("🚀 STARTING: Automatically fetching Gmail emails after sign-in...");
           const emailData = await googleAuth.fetchGmailEmails(5);
-          console.log("Fetched emails:", emailData);
+          console.log("📧 FETCHED EMAILS:", emailData.length, "emails");
+          console.log("📧 Email IDs:", emailData.map(e => e.email_id));
           
           if (emailData && emailData.length > 0) {
-            // Save to Supabase
-            const { supabase } = await import('../config/supabase');
-            const { data, error } = await supabase
-              .from('emails')
-              .insert(emailData);
+            // Call batch endpoint to clear tables and process all emails
+            console.log("🗑️ CLEARING TABLES: Calling batch endpoint to clear and process all emails");
+            
+            // Call the batch convert endpoint 
+            const response = await fetch('http://localhost:8001/convert-emails-to-videos-batch', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                emails: emailData
+              }),
+            });
 
-            if (error) {
-              console.error('Supabase error details:', error);
+            if (response.ok) {
+              const result = await response.json();
+              console.log("✅ BATCH SUCCESS: All emails processed and saved to database:", result);
+              console.log("📊 BATCH RESULTS:", JSON.stringify(result, null, 2));
             } else {
-              console.log(`Successfully saved ${emailData.length} emails to Supabase database!`);
+              const errorText = await response.text();
+              console.error("❌ BATCH ERROR: Failed to process emails batch:", response.status);
+              console.error("❌ BATCH ERROR DETAILS:", errorText);
             }
           }
         } catch (gmailError) {
           console.error("Error automatically fetching Gmail emails:", gmailError);
+          console.log("Gmail fetch error details:", gmailError.message);
           // Don't fail the sign-in if Gmail fetch fails
         }
         

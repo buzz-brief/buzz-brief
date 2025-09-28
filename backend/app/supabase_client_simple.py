@@ -126,7 +126,8 @@ async def save_video(video_data: Dict[str, Any], email_uuid: Optional[str] = Non
         video_record = {
             'video_id': video_data.get('video_id', ''),
             'email_id': email_uuid,
-            'video_url': video_data.get('video_url', '')
+            'video_url': video_data.get('video_url', ''),
+            'is_flagged': False
         }
         
         result = supabase.table('videos').insert(video_record).execute()
@@ -236,6 +237,33 @@ async def get_recent_videos(limit: int = 10) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error retrieving recent videos: {e}")
         return []
+
+async def clear_all_tables():
+    """
+    Clear all data from emails and videos tables
+    """
+    if not is_supabase_available():
+        logger.warning("Supabase not available, skipping table clearing")
+        return False
+        
+    try:
+        logger.info("Starting to clear all tables...")
+        
+        # Clear videos table first (due to foreign key constraint)
+        videos_result = supabase.table('videos').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+        logger.info(f"Cleared videos table: {len(videos_result.data) if videos_result.data else 0} rows deleted")
+        
+        # Clear emails table
+        emails_result = supabase.table('emails').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+        logger.info(f"Cleared emails table: {len(emails_result.data) if emails_result.data else 0} rows deleted")
+        
+        logger.info("Successfully cleared all tables")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to clear tables: {e}")
+        return False
+
 
 # Initialize Supabase on module import
 initialize_supabase()

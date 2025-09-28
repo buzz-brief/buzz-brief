@@ -48,7 +48,7 @@ export default function HomePage({ navigation }) {
         const userName = result.user.name || result.user.givenName || result.user.email || "User";
         Alert.alert(
           "Welcome!",
-          `Successfully signed in as ${userName}. Your recent emails are being fetched and saved to the database...`,
+          `Successfully signed in as ${userName}. Your recent 5 emails are being fetched and converted to videos...`,
           [
             {
               text: "Continue",

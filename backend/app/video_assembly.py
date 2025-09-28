@@ -162,12 +162,12 @@ async def generate_audio(script: str) -> str:
     try:
         if not script or len(script.strip()) < 5:
             logger.warning("Empty or too short script, using fallback audio")
-            return "assets/default_audio.mp3"
+            return os.path.abspath("assets/default_audio.mp3")
         
         # Generate audio using OpenAI TTS
         if not openai_client:
             logger.warning("OpenAI client not configured, using fallback audio")
-            return "assets/default_audio.mp3"
+            return os.path.abspath("assets/default_audio.mp3")
         
         # Select random voice for variety
         available_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
@@ -200,7 +200,7 @@ async def generate_audio(script: str) -> str:
         
     except Exception as e:
         logger.error(f"Audio generation failed: {e}")
-        return "assets/default_audio.mp3"
+        return os.path.abspath("assets/default_audio.mp3")
 
 
 def create_color_background() -> str:
