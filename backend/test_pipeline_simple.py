@@ -177,6 +177,9 @@ def main():
     logger.info("🎬 BuzzBrief Pipeline Test")
     logger.info("=" * 60)
     
+    # Load environment variables FIRST
+    load_env_file()
+    
     # Check if OpenAI API key is available
     if os.getenv('OPENAI_API_KEY'):
         logger.info("✅ OpenAI API key found")

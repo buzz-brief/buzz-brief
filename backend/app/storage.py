@@ -97,9 +97,16 @@ async def download_from_storage(url_or_path: str) -> str:
         # If it's a Supabase Storage URL, download it
         if url_or_path.startswith("http") and "supabase" in url_or_path and supabase_storage:
             try:
-                # Extract file path from URL
-                file_path = url_or_path.split('/')[-1]  # Get filename
-                temp_path = f"/tmp/{file_path}"
+                # Extract file path from URL, removing query parameters
+                url_path = url_or_path.split('?')[0]  # Remove query parameters
+                # Extract the path after /storage/v1/object/public/videos/
+                if '/storage/v1/object/public/videos/' in url_path:
+                    file_path = url_path.split('/storage/v1/object/public/videos/')[1]
+                else:
+                    # Fallback: just get the filename
+                    file_path = url_path.split('/')[-1]
+                
+                temp_path = f"/tmp/{file_path.replace('/', '_')}"
                 
                 # Download file from Supabase Storage
                 file_data = supabase_storage.storage.from_('videos').download(file_path)
@@ -116,7 +123,9 @@ async def download_from_storage(url_or_path: str) -> str:
         
         # If it's a storage URL, extract filename and look in assets
         if url_or_path.startswith("gs://") or url_or_path.startswith("http"):
-            filename = os.path.basename(url_or_path)
+            # Remove query parameters before extracting filename
+            clean_url = url_or_path.split('?')[0]
+            filename = os.path.basename(clean_url)
             local_path = os.path.join(ASSETS_DIR, "downloads", filename)
             
             if os.path.exists(local_path):

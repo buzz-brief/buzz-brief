@@ -208,3 +208,4 @@ Your **BuzzBrief email-to-video pipeline** is **100% functional** and ready for 
 - `assets/videos/text_conversion_test.mp4` - Project update email converted
 
 **You can now convert any email into an engaging TikTok-style video!** 🚀
+

@@ -259,3 +259,4 @@ The TTS audio is integrated into the video generation pipeline:
 3. Final output is a TikTok-style vertical video with AI narration
 
 The TTS functionality is a critical component that transforms static text into engaging audio content for the final video output.
+

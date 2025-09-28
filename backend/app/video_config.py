@@ -22,25 +22,12 @@ class VideoConfig:
     def __init__(self):
         self.categories = {
             "subway_surfers": [
-                "subway_surfers_01.mp4",
-                "subway_surfers_02.mp4",
-                "subway_surfers_03.mp4"
-            ],
-            "minecraft": [
-                "minecraft_parkour_01.mp4",
-                "minecraft_building_01.mp4",
-                "minecraft_mining_01.mp4"
-            ],
-            "satisfying": [
-                "slime_cutting_01.mp4",
-                "kinetic_sand_01.mp4",
-                "soap_cutting_01.mp4"
-            ],
-            "gaming": [
-                "gaming1.mp4",
-                "gaming2.mp4",
-                "gaming3.mp4"
+                
+                #"babies.mp4",
+                "cat.mp4",
+                #"trump.mp4"
             ]
+            
         }
         
         # Video specifications
@@ -54,7 +41,16 @@ class VideoConfig:
         
         # Selection behavior
         self.selection_mode = "random"  # "random", "round_robin", "category_weighted"
-        self.preferred_categories = ["gaming", "subway_surfers", "minecraft"]  # Priority order
+        self.preferred_categories = ["gaming"]  # Priority order
+        
+        # Background music configuration
+        self.background_music = {
+            'enabled': True,
+            'volume': 0.15,  # 15% volume (keep speech clear)
+            'fade_in': 0.5,  # 0.5 second fade in
+            'fade_out': 0.5, # 0.5 second fade out
+            'directory': ASSETS_DIR / "audio" / "background_music"
+        }
         
     def get_available_videos(self) -> List[str]:
         """Get list of all available video files in backgrounds directory."""
@@ -193,6 +189,32 @@ class VideoConfig:
             if video_name in videos:
                 return category
         return None
+    
+    def get_background_music(self) -> Optional[str]:
+        """Get a random background music file."""
+        music_dir = self.background_music['directory']
+        
+        if not music_dir.exists():
+            logger.warning(f"Background music directory not found: {music_dir}")
+            return None
+        
+        music_files = list(music_dir.glob("*.mp3")) + list(music_dir.glob("*.wav"))
+        
+        if not music_files:
+            logger.warning("No background music files found")
+            return None
+        
+        selected_music = str(random.choice(music_files))
+        logger.info(f"Selected background music: {selected_music}")
+        return selected_music
+    
+    def is_background_music_enabled(self) -> bool:
+        """Check if background music is enabled."""
+        return self.background_music.get('enabled', True)
+    
+    def get_background_music_config(self) -> Dict:
+        """Get background music configuration."""
+        return self.background_music.copy()
 
 
 # Global video configuration instance
@@ -257,3 +279,18 @@ def get_video_stats() -> Dict:
             stats["total_size_mb"] += info["size_mb"]
     
     return stats
+
+
+def get_background_music() -> Optional[str]:
+    """Get a random background music file."""
+    return video_config.get_background_music()
+
+
+def is_background_music_enabled() -> bool:
+    """Check if background music is enabled."""
+    return video_config.is_background_music_enabled()
+
+
+def get_background_music_config() -> Dict:
+    """Get background music configuration."""
+    return video_config.get_background_music_config()

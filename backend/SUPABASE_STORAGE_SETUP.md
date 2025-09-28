@@ -70,3 +70,4 @@ After manual bucket setup, your entire pipeline will automatically:
 5. Serve videos from Supabase CDN
 
 No more local file storage - everything goes to the cloud! 🌤️
+
