@@ -40,13 +40,39 @@ export default function NewPage({ navigation }) {
       }
 
       if (data && data.length > 0) {
-        const emailList = data.map((video) => ({
-          id: video.id,
-          subject: video.title || 'Untitled Video',
-          flagged: video.is_flagged,
-          video_url: video.video_url,
-          created_at: video.created_at,
-        }));
+        // Get all unique email IDs from videos
+        const emailIds = data
+          .map(video => video.email_id)
+          .filter(id => id !== null && id !== undefined);
+
+        // Fetch email subjects for these IDs
+        let emailSubjects = {};
+        if (emailIds.length > 0) {
+          const { data: emailsData, error: emailsError } = await supabase
+            .from('emails')
+            .select('id, subject, body')
+            .in('id', emailIds);
+
+          if (!emailsError && emailsData) {
+            emailSubjects = emailsData.reduce((acc, email) => {
+              acc[email.id] = email.subject;
+              return acc;
+            }, {});
+          }
+        }
+
+        const emailList = data.map((video) => {
+          // Get email subject from the fetched email data
+          const emailSubject = emailSubjects[video.email_id] || `Video ${video.id}`;
+          
+          return {
+            id: video.id,
+            subject: emailSubject,
+            flagged: video.is_flagged,
+            video_url: video.video_url,
+            created_at: video.created_at,
+          };
+        });
 
         console.log('Loaded flagged emails from Supabase:', emailList);
         
