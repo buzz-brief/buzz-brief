@@ -217,3 +217,4 @@ response = requests.post(
 result = response.json()
 print(f"Processed {result['batch_results']['successful']} emails")
 ```
+

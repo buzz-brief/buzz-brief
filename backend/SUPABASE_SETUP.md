@@ -206,3 +206,4 @@ logging.getLogger('app.supabase_client').setLevel(logging.DEBUG)
 8. 🔄 Optional: Set up real-time subscriptions
 
 Your BuzzBrief backend is now ready to store emails and videos in Supabase! 🎉
+

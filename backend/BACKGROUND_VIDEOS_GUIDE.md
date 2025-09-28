@@ -128,3 +128,4 @@ python test_pipeline_simple.py
 ---
 
 **🎉 Once you add real videos, your pipeline will create amazing TikTok-style videos with actual gaming backgrounds!**
+

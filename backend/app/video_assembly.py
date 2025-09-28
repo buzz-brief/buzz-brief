@@ -19,7 +19,12 @@ if os.getenv('OPENAI_API_KEY'):
 
 # Import storage functions
 from app.storage import upload_to_storage, download_from_storage
-from app.video_config import get_background_video as config_get_background_video
+from app.video_config import (
+    get_background_video as config_get_background_video,
+    get_background_music,
+    is_background_music_enabled,
+    get_background_music_config
+)
 
 
 class VideoAssemblyError(Exception):
@@ -240,10 +245,11 @@ def get_background_video(category: str = None) -> str:
     background_videos = {
         
         "subway_surfers": [
-            "gaming1.mp4",
-            "gaming2.mp4",
-            "gaming3.mp4",
-            "gaming4.mp4",
+            #"gaming1.mp4",
+            #"gaming2.mp4",
+            #"gaming3.mp4",
+            #"gaming4.mp4",
+            "gaming5.mp4"
            
         ]
         
@@ -332,14 +338,22 @@ async def assemble_video(audio_url: str, email_data: Dict[str, Any], script: str
             if subtitle_path:
                 temp_files.append(subtitle_path)
         
-        # Create FFmpeg command with subtitles
+        # Get background music if enabled
+        background_music_path = None
+        if is_background_music_enabled():
+            background_music_path = get_background_music()
+            if background_music_path:
+                logger.info(f"Using background music: {background_music_path}")
+        
+        # Create FFmpeg command with subtitles and background music
         command = create_ffmpeg_command(
             audio_path=audio_path,
             background_path=background_path,
             output_path=output_path,
             email_data=email_data,
             duration=duration,
-            subtitle_path=subtitle_path
+            subtitle_path=subtitle_path,
+            background_music_path=background_music_path
         )
         
         # Run FFmpeg
@@ -377,17 +391,19 @@ async def assemble_video(audio_url: str, email_data: Dict[str, Any], script: str
 
 
 def create_ffmpeg_command(audio_path: str, background_path: str, output_path: str, 
-                         email_data: Dict[str, Any], duration: float, subtitle_path: str = None):
+                         email_data: Dict[str, Any], duration: float, subtitle_path: str = None,
+                         background_music_path: str = None):
     """
-    Create FFmpeg command for video assembly with optional subtitles.
+    Create FFmpeg command for video assembly with optional subtitles and background music.
     
     Args:
-        audio_path: Path to audio file
+        audio_path: Path to audio file (TTS speech)
         background_path: Path to background video
         output_path: Path for output video
         email_data: Email data for text overlay
         duration: Video duration in seconds
         subtitle_path: Optional path to SRT subtitle file
+        background_music_path: Optional path to background music file
         
     Returns:
         FFmpeg command object
@@ -401,6 +417,33 @@ def create_ffmpeg_command(audio_path: str, background_path: str, output_path: st
     # Create FFmpeg stream with looping
     input_video = ffmpeg.input(background_path, stream_loop=-1)  # Loop indefinitely
     input_audio = ffmpeg.input(audio_path)
+    
+    # Handle background music mixing
+    if background_music_path and os.path.exists(background_music_path):
+        # Get background music configuration
+        music_config = get_background_music_config()
+        music_volume = music_config.get('volume', 0.15)
+        fade_in = music_config.get('fade_in', 0.5)
+        fade_out = music_config.get('fade_out', 0.5)
+        
+        # Add background music input
+        input_music = ffmpeg.input(background_music_path)
+        
+        # Mix audio: speech at full volume, music at reduced volume
+        audio = ffmpeg.filter([
+            input_audio,
+            input_music.audio.filter('volume', music_volume)
+        ], 'amix', inputs=2, duration='shortest')
+        
+        # Add fade effects if duration is long enough
+        if duration > fade_in + fade_out:
+            audio = audio.filter('afade', t='in', st=0, d=fade_in)  # Fade in
+            audio = audio.filter('afade', t='out', st=duration-fade_out, d=fade_out)  # Fade out
+        
+        logger.info(f"Added background music: {background_music_path} at {music_volume*100}% volume")
+    else:
+        audio = input_audio
+        logger.info("No background music added")
     
     # Video processing: scale, crop to vertical, trim to audio duration
     video = (
@@ -418,12 +461,12 @@ def create_ffmpeg_command(audio_path: str, background_path: str, output_path: st
         video = video.filter(
             'subtitles',
             subtitle_path,
-            force_style='FontName=Arial,FontSize=24,PrimaryColour=&Hffffff,OutlineColour=&H000000,BorderStyle=0,Outline=1,Shadow=0,Alignment=2,MarginV=50,BackColour=&H00000000'
+            force_style='FontName=Arial,FontSize=12,PrimaryColour=&Hffffff,OutlineColour=&H000000,BorderStyle=0,Outline=1,Shadow=0,Alignment=2,MarginV=50,BackColour=&H00000000'
         )
     
-    # Combine video and audio
+    # Combine video and mixed audio
     output = ffmpeg.output(
-        video, input_audio,
+        video, audio,
         output_path,
         vcodec='libx264',
         acodec='aac',

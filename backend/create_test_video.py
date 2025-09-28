@@ -141,3 +141,4 @@ if __name__ == "__main__":
     else:
         print("\n⚠️  Some assets failed to create. Check FFmpeg installation.")
         sys.exit(1)
+

@@ -128,20 +128,20 @@ def create_script_prompt(email_data: Dict[str, Any]) -> str:
     body = email_data.get('body', '')[:200]  # Limit body for prompt
     
     prompt = f"""
-Transform this email into a catchy TikTok-style script:
+Transform this email into a funny, catchy TikTok-style script:
 
 From: {from_sender}
 Subject: {subject}
 Content: {body}
 
-Create a short, engaging script that:
-- Sounds natural when spoken
-- Is under 150 characters
-- Captures the email's key message
-- Uses conversational language
-- Is suitable for a young audience
+Craft a snappy, hilarious script that:
 
-Example style: "Your boss just sent you an urgent meeting request about Q4 reports. Time to panic or prepare? 😅"
+Sounds like your cool friend talking
+Stays under 150 characters
+Nails the email's vibe
+Drips with witty, conversational sass
+
+Example: "Your boss just yeeted an urgent Q4 meeting at you. Time to chug coffee and fake it, or actually prep?"😅"
 """
     
     return prompt.strip()
