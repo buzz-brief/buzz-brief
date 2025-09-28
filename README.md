@@ -1,4 +1,16 @@
-[![Buzz Brief Demo Video](https://img.youtube.com/vi/oFaW2A6t9D0/maxresdefault.jpg)](https://youtube.com/shorts/oFaW2A6t9D0)
+<p align="center">
+  <a href="https://www.youtube.com/shorts/oFaW2A6t9D0" title="Watch the demo on YouTube">
+    <img src="https://img.youtube.com/vi/oFaW2A6t9D0/maxresdefault.jpg" alt="BuzzBrief — demo" width="720">
+  </a>
+</p>
+<p align="center">
+  <a href="https://www.youtube.com/shorts/oFaW2A6t9D0" title="Watch the demo on YouTube">
+    <img src="https://img.shields.io/badge/Watch%20the%20demo-YouTube-red?logo=youtube&logoColor=white" alt="Watch the demo on YouTube">
+  </a>
+</p>
+
+
+
 ## Inspiration
 Do you ever get bored scrolling through hundreds of emails, having to read each one separately? It’s not only time-consuming but also mentally draining. That’s when we thought, what if you could digest all your emails easily and actually enjoy it? Imagine consuming your inbox not by reading walls of text, but by watching short, fun, TikTok-style clips that summarize everything for you. Turn a daily hassle into an engaging, exciting, and captivating experience. That’s exactly what inspired Buzz Brief, to transform boring inboxes into entertaining daily briefings.
 
