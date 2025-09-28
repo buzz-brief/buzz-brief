@@ -139,40 +139,33 @@ export const AuthProvider = ({ children }) => {
         
         // Automatically fetch and process Gmail emails after successful sign-in
         try {
-          console.log("🚀 STARTING: Automatically fetching Gmail emails after sign-in...");
-          const emailData = await googleAuth.fetchGmailEmails(5);
-          console.log("📧 FETCHED EMAILS:", emailData.length, "emails");
-          console.log("📧 Email IDs:", emailData.map(e => e.email_id));
+          console.log("🚀 STARTING: Calling backend to fetch and process Gmail emails...");
           
-          if (emailData && emailData.length > 0) {
-            // Call batch endpoint to clear tables and process all emails
-            console.log("🗑️ CLEARING TABLES: Calling batch endpoint to clear and process all emails");
-            
-            // Call the batch convert endpoint 
-            const response = await fetch('http://localhost:8001/convert-emails-to-videos-batch', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                emails: emailData
-              }),
-            });
+          // Call the new backend endpoint that handles everything
+          const response = await fetch('http://localhost:8001/fetch-and-process-gmail', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              access_token: result.accessToken
+            }),
+          });
 
-            if (response.ok) {
-              const result = await response.json();
-              console.log("✅ BATCH SUCCESS: All emails processed and saved to database:", result);
-              console.log("📊 BATCH RESULTS:", JSON.stringify(result, null, 2));
-            } else {
-              const errorText = await response.text();
-              console.error("❌ BATCH ERROR: Failed to process emails batch:", response.status);
-              console.error("❌ BATCH ERROR DETAILS:", errorText);
-            }
+          if (response.ok) {
+            const gmailResult = await response.json();
+            console.log("✅ GMAIL SUCCESS: Backend fetched and processed all emails:", gmailResult);
+            console.log("📊 GMAIL RESULTS:", JSON.stringify(gmailResult, null, 2));
+            console.log(`🎉 COMPLETED: ${gmailResult.successful_emails}/${gmailResult.total_emails} emails processed successfully`);
+          } else {
+            const errorText = await response.text();
+            console.error("❌ GMAIL ERROR: Backend failed to process Gmail emails:", response.status);
+            console.error("❌ GMAIL ERROR DETAILS:", errorText);
           }
         } catch (gmailError) {
-          console.error("Error automatically fetching Gmail emails:", gmailError);
-          console.log("Gmail fetch error details:", gmailError.message);
-          // Don't fail the sign-in if Gmail fetch fails
+          console.error("Error calling backend Gmail processing:", gmailError);
+          console.log("Gmail processing error details:", gmailError.message);
+          // Don't fail the sign-in if Gmail processing fails
         }
         
         return { success: true, user: result.user };

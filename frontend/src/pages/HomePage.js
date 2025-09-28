@@ -46,16 +46,16 @@ export default function HomePage({ navigation }) {
 
       if (result.success) {
         const userName = result.user.name || result.user.givenName || result.user.email || "User";
-        Alert.alert(
-          "Welcome!",
-          `Successfully signed in as ${userName}. Your recent 5 emails are being fetched and converted to videos...`,
-          [
-            {
-              text: "Continue",
-              onPress: () => navigation.navigate("VideoFeed"),
-            },
-          ]
-        );
+            Alert.alert(
+              "Welcome!",
+              `Successfully signed in as ${userName}. Backend is now fetching your recent 5 emails and converting them to videos...`,
+              [
+                {
+                  text: "Continue",
+                  onPress: () => navigation.navigate("VideoFeed"),
+                },
+              ]
+            );
       } else {
         Alert.alert(
           "Sign In Failed",

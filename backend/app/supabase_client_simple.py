@@ -68,18 +68,53 @@ async def save_email(email_data: Dict[str, Any]) -> Optional[str]:
             'body': email_data.get('body', '')
         }
         
+        logger.info(f"Attempting to save email: {email_record['email_id']}")
+        
+        # First check if email already exists
+        existing_email = await get_email_by_id(email_record['email_id'])
+        if existing_email:
+            logger.info(f"Email already exists in database: {email_record['email_id']} (UUID: {existing_email['id']})")
+            return existing_email['id']
+        
+        # Insert new email if it doesn't exist
         result = supabase.table('emails').insert(email_record).execute()
         
         if result.data:
             email_uuid = result.data[0]['id']
-            logger.info(f"Email saved to Supabase: {email_uuid}")
+            logger.info(f"Email saved to Supabase: {email_uuid} (email_id: {email_record['email_id']})")
             return email_uuid
         else:
-            logger.error("Failed to save email to Supabase")
+            logger.error(f"Failed to save email to Supabase - no data returned for email_id: {email_record['email_id']}")
             return None
             
     except Exception as e:
-        logger.error(f"Error saving email to Supabase: {e}")
+        logger.error(f"Error saving email to Supabase (email_id: {email_data.get('id', 'unknown')}): {e}")
+        if "duplicate key value violates unique constraint" in str(e):
+            logger.warning(f"Duplicate email_id detected: {email_data.get('id', 'unknown')} - this should have been caught by existence check")
+        return None
+
+async def get_video_by_email_uuid(email_uuid: str) -> Optional[Dict[str, Any]]:
+    """
+    Check if a video already exists for a given email UUID
+    
+    Args:
+        email_uuid: The UUID of the email record
+        
+    Returns:
+        Video record or None if not found
+    """
+    if not is_supabase_available():
+        return None
+        
+    try:
+        result = supabase.table('videos').select('*').eq('email_id', email_uuid).execute()
+        
+        if result.data:
+            return result.data[0]
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error retrieving video by email UUID from Supabase: {e}")
         return None
 
 async def get_email_by_id(email_id: str) -> Optional[Dict[str, Any]]:

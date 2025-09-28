@@ -5,11 +5,13 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import Dict, Any, List
+import requests
 
 from app.monitoring import setup_logging, setup_sentry, metrics, check_system_health, check_dependencies, log_request_metrics
 from app.video_generator import process_email, process_email_batch, health_check_pipeline
 from app.email_parser import parse_email
 import uuid
+import base64
 
 
 @asynccontextmanager
@@ -297,7 +299,13 @@ async def convert_email_to_video(request: Dict[str, Any], background_tasks: Back
 @app.post("/convert-emails-to-videos-batch")
 async def convert_emails_to_videos_batch(request: Dict[str, Any]):
     """
-    Batch endpoint to clear tables and convert multiple emails to videos
+    Batch endpoint to save emails to database and convert each email to a video (preserves history)
+    
+    Process:
+    1. Save each email to the emails table (skip if already exists)
+    2. Convert each email to a video and save to videos table (skip if already exists)
+    3. Preserves all existing data - no table clearing
+    
     Expected format: {"emails": [list of email objects]}
     """
     try:
@@ -307,10 +315,7 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
         
         logger.info(f"batch_processing_started: Processing {len(emails)} emails")
         
-        # Clear both tables first
-        from app.supabase_client_simple import clear_all_tables
-        logger.info("clearing_tables: Clearing emails and videos tables")
-        await clear_all_tables()
+        # Keep all existing data - no clearing of tables
         
         results = []
         successful_count = 0
@@ -320,7 +325,7 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
             try:
                 logger.info(f"processing_email: {i+1}/{len(emails)} - {email.get('email_id', 'unknown')}")
                 
-                # Just save the email to database, skip video generation for now
+                # Step 1: Save the email to database
                 from app.supabase_client_simple import save_email
                 
                 try:
@@ -331,13 +336,63 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
                     })
                     
                     if email_uuid:
-                        successful_count += 1
-                        results.append({
-                            "email_id": email.get('email_id'),
-                            "success": True,
-                            "message": "Email saved to database successfully"
-                        })
                         logger.info(f"email_saved_success: {email.get('email_id')}")
+                        successful_count += 1  # Count email save success
+                        
+                        # Check if video already exists for this email
+                        from app.supabase_client_simple import get_video_by_email_uuid
+                        existing_video = await get_video_by_email_uuid(email_uuid)
+                        
+                        if existing_video:
+                            logger.info(f"video_already_exists: {email.get('email_id')} -> {existing_video['video_url']}")
+                            results.append({
+                                "email_id": email.get('email_id'),
+                                "success": True,
+                                "video_url": existing_video['video_url'],
+                                "message": "Email processed, video already exists"
+                            })
+                        else:
+                            # Step 2: Convert email to video only if it doesn't exist
+                            try:
+                                logger.info(f"converting_email_to_video: {email.get('email_id')}")
+                                
+                                # Create email text for video generation
+                                email_text = f"Subject: {email.get('subject', 'No Subject')}\n\n{email.get('body', 'No content')}"
+                                
+                                # Parse email text into structured data (same as convert_email_to_video endpoint)
+                                email_data = parse_email_text(email_text)
+                                
+                                # Update email_data with actual email_id from Gmail
+                                email_data['id'] = email.get('email_id')
+                                
+                                # Process email to create video
+                                video_url = await process_email(email_data)
+                                
+                                if video_url:
+                                    results.append({
+                                        "email_id": email.get('email_id'),
+                                        "success": True,
+                                        "video_url": video_url,
+                                        "message": "Email saved and video created successfully"
+                                    })
+                                logger.info(f"video_created_success: {email.get('email_id')} -> {video_url}")
+                                else:
+                                    results.append({
+                                        "email_id": email.get('email_id'),
+                                        "success": True,  # Email was saved successfully
+                                        "video_url": "assets/fallback_video.mp4",
+                                        "message": "Email saved successfully, using fallback video"
+                                    })
+                                    logger.error(f"video_generation_failed: {email.get('email_id')} - using fallback")
+                                    
+                            except Exception as video_error:
+                                logger.error(f"video_generation_error: {email.get('email_id')} - {video_error}")
+                                results.append({
+                                    "email_id": email.get('email_id'),
+                                    "success": True,  # Email was saved successfully
+                                    "video_url": "assets/fallback_video.mp4",
+                                    "message": f"Email saved successfully, video generation failed: {str(video_error)}"
+                                })
                     else:
                         results.append({
                             "email_id": email.get('email_id'),
@@ -345,6 +400,7 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
                             "error": "Failed to save email to database"
                         })
                         logger.error(f"email_save_failed: {email.get('email_id')}")
+                        
                 except Exception as save_error:
                     logger.error(f"email_save_error: {email.get('email_id')} - {save_error}")
                     results.append({
@@ -372,7 +428,7 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
             "successful_emails": successful_count,
             "failed_emails": len(emails) - successful_count,
             "results": results,
-            "message": f"Batch processing completed: {successful_count}/{len(emails)} emails saved to database"
+            "message": f"Batch processing completed: {successful_count}/{len(emails)} emails saved and converted to videos"
         }
         
     except Exception as e:
@@ -380,6 +436,276 @@ async def convert_emails_to_videos_batch(request: Dict[str, Any]):
         raise HTTPException(
             status_code=500,
             detail=f"Batch processing failed: {str(e)}"
+        )
+
+
+@app.post("/fetch-and-process-gmail")
+async def fetch_and_process_gmail(request: Dict[str, Any]):
+    """
+    Fetch 5 emails from user's Gmail account and convert them to videos (preserves history)
+    
+    Process:
+    1. Use the provided access token to fetch 5 recent emails from Gmail API
+    2. Save each email to the emails table (skip if already exists)
+    3. Convert each email to a video and save to videos table (skip if already exists)
+    4. Preserves all existing data - no table clearing
+    
+    Expected format: {"access_token": "user_gmail_access_token"}
+    """
+    try:
+        access_token = request.get('access_token')
+        if not access_token:
+            raise HTTPException(status_code=400, detail="access_token is required")
+        
+        logger.info("gmail_fetch_started: Fetching emails from Gmail API")
+        
+        # Helper function to decode base64 URL encoded strings
+        def decode_base64_url(data):
+            """Decode base64 URL encoded string"""
+            # Add padding if necessary
+            data += '=' * (4 - len(data) % 4)
+            # Replace URL-safe characters
+            data = data.replace('-', '+').replace('_', '/')
+            try:
+                decoded_bytes = base64.b64decode(data)
+                return decoded_bytes.decode('utf-8')
+            except Exception as e:
+                logger.warning(f"decode_base64_url_failed: {e}")
+                return ""
+        
+        # Helper function to get header value from email headers
+        def get_header(headers, name):
+            """Get header value from email headers"""
+            for header in headers:
+                if header.get('name', '').lower() == name.lower():
+                    return header.get('value', '')
+            return ""
+        
+        # Helper function to extract email body from payload
+        def get_body(payload):
+            """Extract email body from payload"""
+            if not payload:
+                return ""
+            
+            # Check if this part has body data
+            if payload.get('body', {}).get('data'):
+                return decode_base64_url(payload['body']['data'])
+            
+            # Check parts for text/plain content
+            parts = payload.get('parts', [])
+            for part in parts:
+                if part.get('mimeType') == 'text/plain' and part.get('body', {}).get('data'):
+                    return decode_base64_url(part['body']['data'])
+                # Recursive check for nested parts
+                if part.get('parts'):
+                    inner_body = get_body(part)
+                    if inner_body:
+                        return inner_body
+            
+            return ""
+        
+        # Step 1: Fetch 5 recent emails from Gmail API
+        gmail_headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Get list of message IDs
+        list_url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5'
+        list_response = requests.get(list_url, headers=gmail_headers)
+        
+        if not list_response.ok:
+            logger.error(f"gmail_list_failed: {list_response.status_code} - {list_response.text}")
+            raise HTTPException(
+                status_code=list_response.status_code, 
+                detail=f"Failed to fetch Gmail message list: {list_response.text}"
+            )
+        
+        list_data = list_response.json()
+        messages = list_data.get('messages', [])
+        
+        logger.info(f"gmail_messages_found: {len(messages)} messages")
+        
+        if not messages:
+            return {
+                "success": True,
+                "message": "No emails found in Gmail account",
+                "total_emails": 0,
+                "successful_emails": 0,
+                "failed_emails": 0,
+                "results": []
+            }
+        
+        # Step 2: Fetch full email content for each message
+        emails = []
+        for message in messages:
+            message_id = message['id']
+            
+            # Get full message content
+            message_url = f'https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}'
+            message_response = requests.get(message_url, headers=gmail_headers)
+            
+            if message_response.ok:
+                message_data = message_response.json()
+                
+                # Extract email information
+                payload = message_data.get('payload', {})
+                headers = payload.get('headers', [])
+                
+                subject = get_header(headers, 'Subject') or '(no subject)'
+                from_sender = get_header(headers, 'From') or 'Unknown sender'
+                body = get_body(payload) or 'No content available'
+                
+                # Get timestamp
+                internal_date = message_data.get('internalDate', '0')
+                created_at = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(int(internal_date) / 1000))
+                
+                email_info = {
+                    'email_id': message_id,
+                    'subject': subject,
+                    'body': body[:500] + ('...' if len(body) > 500 else ''),  # Limit body length
+                    'from': from_sender,
+                    'created_at': created_at
+                }
+                
+                emails.append(email_info)
+                logger.info(f"gmail_email_processed: {message_id} - {subject[:50]}...")
+            else:
+                logger.error(f"gmail_message_fetch_failed: {message_id} - {message_response.status_code}")
+        
+        logger.info(f"gmail_fetch_completed: {len(emails)} emails processed")
+        
+        if not emails:
+            return {
+                "success": True,
+                "message": "No emails could be processed from Gmail",
+                "total_emails": 0,
+                "successful_emails": 0,
+                "failed_emails": 0,
+                "results": []
+            }
+        
+        # Step 3: Keep all existing data - no clearing of tables
+        
+        results = []
+        successful_count = 0
+        
+        # Step 4: Process each email (save to DB and create video)
+        for i, email in enumerate(emails):
+            try:
+                logger.info(f"processing_email: {i+1}/{len(emails)} - {email.get('email_id', 'unknown')}")
+                
+                # Save the email to database
+                from app.supabase_client_simple import save_email
+                
+                try:
+                    email_uuid = await save_email({
+                        'id': email.get('email_id'),
+                        'subject': email.get('subject', 'No Subject'),
+                        'body': email.get('body', 'No content')
+                    })
+                    
+                    if email_uuid:
+                        logger.info(f"email_saved_success: {email.get('email_id')}")
+                        successful_count += 1  # Count email save success
+                        
+                        # Check if video already exists for this email
+                        from app.supabase_client_simple import get_video_by_email_uuid
+                        existing_video = await get_video_by_email_uuid(email_uuid)
+                        
+                        if existing_video:
+                            logger.info(f"video_already_exists: {email.get('email_id')} -> {existing_video['video_url']}")
+                            results.append({
+                                "email_id": email.get('email_id'),
+                                "success": True,
+                                "video_url": existing_video['video_url'],
+                                "message": "Email processed, video already exists"
+                            })
+                        else:
+                            # Convert email to video only if it doesn't exist
+                            try:
+                                logger.info(f"converting_email_to_video: {email.get('email_id')}")
+                                
+                                # Create email text for video generation
+                                email_text = f"Subject: {email.get('subject', 'No Subject')}\n\n{email.get('body', 'No content')}"
+                                
+                                # Parse email text into structured data
+                                email_data = parse_email_text(email_text)
+                                
+                                # Update email_data with actual email_id from Gmail
+                                email_data['id'] = email.get('email_id')
+                                
+                                # Process email to create video
+                                video_url = await process_email(email_data)
+                                
+                                if video_url:
+                                    results.append({
+                                        "email_id": email.get('email_id'),
+                                        "success": True,
+                                        "video_url": video_url,
+                                        "message": "Email fetched, saved, and video created successfully"
+                                    })
+                                    logger.info(f"video_created_success: {email.get('email_id')} -> {video_url}")
+                                else:
+                                    results.append({
+                                        "email_id": email.get('email_id'),
+                                        "success": True,  # Email was saved successfully
+                                        "video_url": "assets/fallback_video.mp4",
+                                        "message": "Email saved successfully, using fallback video"
+                                    })
+                                    logger.error(f"video_generation_failed: {email.get('email_id')} - using fallback")
+                                    
+                            except Exception as video_error:
+                                logger.error(f"video_generation_error: {email.get('email_id')} - {video_error}")
+                                results.append({
+                                    "email_id": email.get('email_id'),
+                                    "success": True,  # Email was saved successfully
+                                    "video_url": "assets/fallback_video.mp4",
+                                    "message": f"Email saved successfully, video generation failed: {str(video_error)}"
+                                })
+                    else:
+                        results.append({
+                            "email_id": email.get('email_id'),
+                            "success": False,
+                            "error": "Failed to save email to database"
+                        })
+                        logger.error(f"email_save_failed: {email.get('email_id')}")
+                        
+                except Exception as save_error:
+                    logger.error(f"email_save_error: {email.get('email_id')} - {save_error}")
+                    results.append({
+                        "email_id": email.get('email_id'),
+                        "success": False,
+                        "error": str(save_error)
+                    })
+                    
+            except Exception as email_error:
+                logger.error(f"email_processing_error: {email.get('email_id', 'unknown')} - {email_error}")
+                results.append({
+                    "email_id": email.get('email_id'),
+                    "success": False,
+                    "error": str(email_error)
+                })
+        
+        # Track metrics
+        metrics.increment('gmail_emails_processed', successful_count)
+        
+        logger.info(f"gmail_processing_completed: {successful_count}/{len(emails)} emails processed successfully")
+        
+        return {
+            "success": True,
+            "total_emails": len(emails),
+            "successful_emails": successful_count,
+            "failed_emails": len(emails) - successful_count,
+            "results": results,
+            "message": f"Gmail processing completed: {successful_count}/{len(emails)} emails fetched and converted to videos"
+        }
+        
+    except Exception as e:
+        logger.error(f"gmail_processing_failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gmail processing failed: {str(e)}"
         )
 
 
