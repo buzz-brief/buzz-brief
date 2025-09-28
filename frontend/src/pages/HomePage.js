@@ -1,50 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Asset } from 'expo-asset';
+import React, { useState, useEffect } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Image,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
+import { useAuth } from "../context/AuthContext";
 
 export default function HomePage({ navigation }) {
-  const [isLoading, setIsLoading] = useState(false);
   const [logoLoaded, setLogoLoaded] = useState(false);
+  const { signIn, isSigningIn, isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     // Preload the logo image for faster display
     const preloadLogo = async () => {
       try {
-        const logoAsset = Asset.fromModule(require('../../assets/Adobe Express - file.png'));
+        const logoAsset = Asset.fromModule(
+          require("../../assets/Adobe Express - file.png")
+        );
         await logoAsset.downloadAsync();
         setLogoLoaded(true);
       } catch (error) {
-        console.log('Logo preload error:', error);
+        console.log("Logo preload error:", error);
         setLogoLoaded(true); // Still show the image even if preload fails
       }
     };
     preloadLogo();
   }, []);
 
+  // If user is already authenticated, navigate to VideoFeed
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigation.navigate("VideoFeed");
+    }
+  }, [isAuthenticated, user, navigation]);
+
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    
     try {
-      // Simulate Google sign-in process
-      // In a real app, you would use Google Sign-In SDK here
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      
-      // For now, just navigate to VideoFeed after "sign in"
-      Alert.alert(
-        'Success!',
-        'Successfully signed in with Google',
-        [
-          {
-            text: 'Continue',
-            onPress: () => navigation.navigate('VideoFeed')
-          }
-        ]
-      );
+      const result = await signIn();
+
+      if (result.success) {
+        Alert.alert(
+          "Welcome!",
+          `Successfully signed in as ${result.user.name}`,
+          [
+            {
+              text: "Continue",
+              onPress: () => navigation.navigate("VideoFeed"),
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Sign In Failed",
+          result.error || "Failed to sign in with Google. Please try again.",
+          [{ text: "OK" }]
+        );
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error("Sign in error:", error);
+      Alert.alert("Error", "An unexpected error occurred. Please try again.", [
+        { text: "OK" },
+      ]);
     }
   };
 
@@ -52,8 +74,8 @@ export default function HomePage({ navigation }) {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Image 
-            source={require('../../assets/Adobe Express - file.png')}
+          <Image
+            source={require("../../assets/Adobe Express - file.png")}
             style={styles.logoImage}
             resizeMode="contain"
             fadeDuration={0}
@@ -61,17 +83,20 @@ export default function HomePage({ navigation }) {
             onError={() => setLogoLoaded(true)}
           />
         </View>
-        
+
         <Text style={styles.title}>Buzz Brief</Text>
         <Text style={styles.subtitle}>Connect with Gmail to get started</Text>
-        
-        <TouchableOpacity 
-          style={[styles.googleButton, isLoading && styles.googleButtonDisabled]} 
+
+        <TouchableOpacity
+          style={[
+            styles.googleButton,
+            isSigningIn && styles.googleButtonDisabled,
+          ]}
           onPress={handleGoogleSignIn}
-          disabled={isLoading}
+          disabled={isSigningIn}
         >
           <View style={styles.googleButtonContent}>
-            {isLoading ? (
+            {isSigningIn ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
@@ -81,7 +106,7 @@ export default function HomePage({ navigation }) {
             )}
           </View>
         </TouchableOpacity>
-        
+
         <Text style={styles.privacyText}>
           By signing in, you agree to our Terms of Service and Privacy Policy
         </Text>
@@ -93,16 +118,16 @@ export default function HomePage({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 20,
   },
   logoContainer: {
-    marginBottom: -15
+    marginBottom: -15,
   },
   logoImage: {
     width: 200,
@@ -110,29 +135,29 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 48,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontWeight: "900",
+    color: "#FFFFFF",
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
     letterSpacing: 2,
-    textShadowColor: '#FFD700',
+    textShadowColor: "#FFD700",
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
-    fontFamily: 'System',
+    fontFamily: "System",
   },
   subtitle: {
     fontSize: 18,
-    color: '#CCCCCC',
+    color: "#CCCCCC",
     marginBottom: 40,
-    textAlign: 'center',
+    textAlign: "center",
   },
   googleButton: {
-    backgroundColor: '#FFD700',
+    backgroundColor: "#FFD700",
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -142,23 +167,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   googleButtonDisabled: {
-    backgroundColor: '#B8860B',
+    backgroundColor: "#B8860B",
   },
   googleButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   googleButtonText: {
-    color: '#000000',
+    color: "#000000",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 10,
   },
   privacyText: {
     fontSize: 12,
-    color: '#AAAAAA',
-    textAlign: 'center',
+    color: "#AAAAAA",
+    textAlign: "center",
     lineHeight: 18,
     paddingHorizontal: 20,
   },
