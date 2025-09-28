@@ -301,6 +301,10 @@ export default function VideoFeed({ navigation }) {
     navigation.navigate("NewPage");
   };
 
+  const navigateToGmailIntegration = () => {
+    navigation.navigate("GmailIntegration");
+  };
+
   const onSwipeGesture = (event) => {
     if (event.nativeEvent.state === State.END) {
       const { translationX } = event.nativeEvent;
@@ -431,6 +435,14 @@ export default function VideoFeed({ navigation }) {
             size={24}
             color="white"
           />
+        </TouchableOpacity>
+
+        {/* Gmail Integration Button */}
+        <TouchableOpacity
+          style={styles.gmailButton}
+          onPress={navigateToGmailIntegration}
+        >
+          <Ionicons name="mail" size={24} color="white" />
         </TouchableOpacity>
       </View>
     </View>
@@ -581,6 +593,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 30,
     right: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 25,
+    padding: 12,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
+    zIndex: 7,
+  },
+  gmailButton: {
+    position: "absolute",
+    bottom: 95,
+    left: 10,
     backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 25,
     padding: 12,

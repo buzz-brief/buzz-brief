@@ -1,115 +1,135 @@
-import * as AuthSession from "expo-auth-session";
-import * as Crypto from "expo-crypto";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { decode as atob } from "base-64";
 
 // Google OAuth configuration
 const GOOGLE_OAUTH_CONFIG = {
-  clientId:
-    "1023510964289-8vd32lo5aukn3ku6peg3f9eb0oi5l87r.apps.googleusercontent.com", // iOS client ID
-  scopes: ["openid", "profile", "email"],
+  iosClientId: "1023510964289-8vd32lo5aukn3ku6peg3f9eb0oi5l87r.apps.googleusercontent.com",
+  scopes: ["openid", "profile", "email", "https://www.googleapis.com/auth/gmail.readonly"],
 };
 
 class GoogleAuthService {
   constructor() {
     this.user = null;
     this.accessToken = null;
+    this.isConfigured = false;
+  }
+
+  async configure() {
+    if (this.isConfigured) return;
+    
+    try {
+      await GoogleSignin.configure({
+        iosClientId: GOOGLE_OAUTH_CONFIG.iosClientId,
+        scopes: GOOGLE_OAUTH_CONFIG.scopes,
+      });
+      this.isConfigured = true;
+      console.log("Google Sign-In configured successfully");
+    } catch (error) {
+      console.error("Error configuring Google Sign-In:", error);
+      throw error;
+    }
   }
 
   async signIn() {
     try {
-      // Use Expo AuthSession with Google provider
-      const redirectUri = AuthSession.makeRedirectUri({
-        useProxy: true,
-      });
-
-      const request = new AuthSession.AuthRequest({
-        clientId: GOOGLE_OAUTH_CONFIG.clientId,
-        scopes: GOOGLE_OAUTH_CONFIG.scopes,
-        redirectUri: redirectUri,
-        responseType: AuthSession.ResponseType.Code,
-      });
-
-      console.log("Redirect URI:", redirectUri);
-
-      // Prompt for authentication
-      const result = await request.promptAsync({
-        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-      });
-
-      console.log("Auth result:", result);
-
-      if (result.type === "success") {
-        // Exchange authorization code for access token
-        const tokenResult = await AuthSession.exchangeCodeAsync(
-          {
-            clientId: GOOGLE_OAUTH_CONFIG.clientId,
-            code: result.params.code,
-            redirectUri: redirectUri,
-          },
-          {
-            tokenEndpoint: "https://oauth2.googleapis.com/token",
-          }
-        );
-
-        console.log("Token exchange successful");
-        this.accessToken = tokenResult.accessToken;
-
-        // Fetch user profile
-        const userProfile = await this.fetchUserProfile(
-          tokenResult.accessToken
-        );
-        this.user = userProfile;
-
-        return {
-          success: true,
-          user: userProfile,
-          accessToken: tokenResult.accessToken,
-        };
-      } else {
-        return {
-          success: false,
-          error: "Authentication was cancelled or failed",
+      await this.configure();
+      
+      // Check if device supports Google Play Services
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      
+      // Sign in
+      const userInfo = await GoogleSignin.signIn();
+      console.log("Google Sign-In response:", JSON.stringify(userInfo, null, 2));
+      
+      // Wait a moment for the sign-in to fully complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get access token
+      let tokens;
+      try {
+        tokens = await GoogleSignin.getTokens();
+        console.log("Tokens retrieved:", JSON.stringify(tokens, null, 2));
+      } catch (tokenError) {
+        console.error("Error getting tokens:", tokenError);
+        // Try to get tokens again after a longer delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        tokens = await GoogleSignin.getTokens();
+        console.log("Tokens retrieved on retry:", JSON.stringify(tokens, null, 2));
+      }
+      
+      console.log("Google Sign-In response:", JSON.stringify(userInfo, null, 2));
+      console.log("User data:", JSON.stringify(userInfo.user, null, 2));
+      console.log("Tokens:", JSON.stringify(tokens, null, 2));
+      console.log("Response keys:", Object.keys(userInfo));
+      
+      // Handle different response structures
+      let user = userInfo.user || userInfo;
+      
+      // If user is still not valid, try to construct it from available data
+      if (!user || !user.email) {
+        console.log("Attempting to construct user data from response...");
+        user = {
+          id: userInfo.id || userInfo.user?.id || userInfo.data?.user?.id,
+          email: userInfo.email || userInfo.user?.email || userInfo.data?.user?.email,
+          name: userInfo.name || userInfo.user?.name || userInfo.givenName || userInfo.user?.givenName || userInfo.data?.user?.name,
+          givenName: userInfo.givenName || userInfo.user?.givenName || userInfo.data?.user?.givenName,
+          familyName: userInfo.familyName || userInfo.user?.familyName || userInfo.data?.user?.familyName,
+          photo: userInfo.photo || userInfo.user?.photo || userInfo.data?.user?.photo,
+          verified_email: userInfo.verified_email || userInfo.user?.verified_email || userInfo.data?.user?.verified_email
         };
       }
+      
+      // Last resort: try to extract from any nested structure
+      if (!user || !user.email) {
+        console.log("Last resort: searching for email in nested structure...");
+        const searchForEmail = (obj, depth = 0) => {
+          if (depth > 3) return null; // Prevent infinite recursion
+          if (typeof obj !== 'object' || obj === null) return null;
+          
+          if (obj.email) return obj;
+          
+          for (const key in obj) {
+            const result = searchForEmail(obj[key], depth + 1);
+            if (result && result.email) return result;
+          }
+          return null;
+        };
+        
+        const foundUser = searchForEmail(userInfo);
+        if (foundUser) {
+          user = foundUser;
+        }
+      }
+      
+      // Validate user data
+      if (!user || !user.email) {
+        console.error("Invalid user data received:", user);
+        console.error("Full response:", userInfo);
+        throw new Error("Invalid user data received from Google Sign-in");
+      }
+      
+      this.user = user;
+      this.accessToken = tokens.accessToken;
+
+      console.log("Google Sign-In successful:", user.email);
+
+      return {
+        success: true,
+        user: user,
+        accessToken: tokens.accessToken,
+      };
     } catch (error) {
       console.error("Google Sign-In error:", error);
       return {
         success: false,
-        error: error.message || "An unexpected error occurred",
+        error: error.message || "Authentication failed",
       };
-    }
-  }
-
-  async fetchUserProfile(accessToken) {
-    try {
-      const response = await fetch(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch user profile");
-      }
-
-      const userInfo = await response.json();
-      return {
-        id: userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-        verified_email: userInfo.verified_email,
-      };
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      throw error;
     }
   }
 
   async signOut() {
     try {
+      await GoogleSignin.signOut();
       this.user = null;
       this.accessToken = null;
       return { success: true };
@@ -131,27 +151,114 @@ class GoogleAuthService {
     return !!this.user && !!this.accessToken;
   }
 
-  // Method to fetch Gmail emails (for future use)
+  // Helper function to decode base64 URL encoded strings
+  decodeBase64Url(str) {
+    str = str.replace(/-/g, "+").replace(/_/g, "/");
+    return decodeURIComponent(
+      atob(str)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+  }
+
+  // Helper function to get header value from email headers
+  getHeader(headers, name) {
+    const header = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
+    return header ? header.value : "";
+  }
+
+  // Helper function to extract email body from payload
+  getBody(payload) {
+    if (!payload) return "";
+    if (payload.parts && payload.parts.length > 0) {
+      for (const part of payload.parts) {
+        if (part.mimeType === "text/plain" && part.body?.data) {
+          return this.decodeBase64Url(part.body.data);
+        }
+        if (part.parts) {
+          const inner = this.getBody(part);
+          if (inner) return inner;
+        }
+      }
+    } else if (payload.body?.data) {
+      return this.decodeBase64Url(payload.body.data);
+    }
+    return "";
+  }
+
+  // Method to fetch Gmail emails with full content
   async fetchGmailEmails(maxResults = 10) {
     if (!this.accessToken) {
       throw new Error("Not authenticated");
     }
 
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-          },
-        }
-      );
+      console.log("Fetching Gmail emails with access token:", this.accessToken.substring(0, 20) + "...");
+      
+      // First, get the list of messages
+      const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}`;
+      console.log("Gmail API URL:", listUrl);
+      
+      const response = await fetch(listUrl, {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
+
+      console.log("Gmail API response status:", response.status);
+      console.log("Gmail API response headers:", response.headers);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch emails");
+        const errorText = await response.text();
+        console.error("Gmail API error response:", errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log("Gmail API response data:", data);
+      const messages = data.messages || [];
+      console.log("Number of messages found:", messages.length);
+      
+      const emailData = [];
+
+      // Fetch full content for each message
+      for (const msg of messages) {
+        try {
+          console.log(`Processing message ${msg.id}...`);
+          const msgResponse = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}`,
+            { headers: { Authorization: `Bearer ${this.accessToken}` } }
+          );
+
+          if (msgResponse.ok) {
+            const message = await msgResponse.json();
+            console.log(`Message ${msg.id} details:`, message);
+            
+            const headers = message.payload?.headers || [];
+            const subject = this.getHeader(headers, "Subject") || "(no subject)";
+            const body = this.getBody(message.payload) || "";
+            const created_at = new Date(parseInt(message.internalDate));
+
+            const emailInfo = {
+              email_id: msg.id,
+              subject,
+              body: body.substring(0, 200) + (body.length > 200 ? "..." : ""),
+              created_at: created_at.toISOString(),
+            };
+
+            console.log(`Processed email:`, emailInfo);
+            emailData.push(emailInfo);
+          } else {
+            console.error(`Failed to fetch message ${msg.id}, status:`, msgResponse.status);
+          }
+        } catch (msgError) {
+          console.error('Error processing message:', msgError);
+        }
+      }
+
+      console.log("Final email data array:", emailData);
+      return emailData;
     } catch (error) {
       console.error("Error fetching Gmail emails:", error);
       throw error;

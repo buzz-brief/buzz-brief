@@ -23,41 +23,22 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const loadUserFromStorage = async () => {
-    try {
-      const userData = await AsyncStorage.getItem("@user");
-      const accessToken = await AsyncStorage.getItem("@accessToken");
-
-      if (userData && accessToken) {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-
-        // Restore the auth service state
-        googleAuth.user = parsedUser;
-        googleAuth.accessToken = accessToken;
-      }
-    } catch (error) {
-      console.error("Error loading user from storage:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    // Skip loading from storage since it's disabled
+    console.log("Storage disabled - no user data loaded from storage");
+    setIsLoading(false);
   };
 
   const saveUserToStorage = async (userData, accessToken) => {
-    try {
-      await AsyncStorage.setItem("@user", JSON.stringify(userData));
-      await AsyncStorage.setItem("@accessToken", accessToken);
-    } catch (error) {
-      console.error("Error saving user to storage:", error);
-    }
+    // Skip storage entirely if it's causing issues
+    console.log("Storage disabled - user will need to sign in again on next app launch");
+    console.log("User data:", userData);
+    console.log("Access token:", accessToken);
+    return;
   };
 
   const clearUserFromStorage = async () => {
-    try {
-      await AsyncStorage.removeItem("@user");
-      await AsyncStorage.removeItem("@accessToken");
-    } catch (error) {
-      console.error("Error clearing user from storage:", error);
-    }
+    // Storage is disabled, so just log
+    console.log("Storage disabled - no need to clear storage");
   };
 
   const signIn = async () => {
@@ -68,7 +49,34 @@ export const AuthProvider = ({ children }) => {
 
       if (result.success) {
         setUser(result.user);
+        
+        // Try to save to storage, but don't let storage failures break sign-in
         await saveUserToStorage(result.user, result.accessToken);
+        
+        // Automatically fetch and save Gmail emails after successful sign-in
+        try {
+          console.log("Automatically fetching Gmail emails after sign-in...");
+          const emailData = await googleAuth.fetchGmailEmails(5);
+          console.log("Fetched emails:", emailData);
+          
+          if (emailData && emailData.length > 0) {
+            // Save to Supabase
+            const { supabase } = await import('../config/supabase');
+            const { data, error } = await supabase
+              .from('emails')
+              .insert(emailData);
+
+            if (error) {
+              console.error('Supabase error details:', error);
+            } else {
+              console.log(`Successfully saved ${emailData.length} emails to Supabase database!`);
+            }
+          }
+        } catch (gmailError) {
+          console.error("Error automatically fetching Gmail emails:", gmailError);
+          // Don't fail the sign-in if Gmail fetch fails
+        }
+        
         return { success: true, user: result.user };
       } else {
         return { success: false, error: result.error };
@@ -100,6 +108,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     signIn,
     signOut,
+    googleAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

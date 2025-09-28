@@ -45,9 +45,10 @@ export default function HomePage({ navigation }) {
       const result = await signIn();
 
       if (result.success) {
+        const userName = result.user.name || result.user.givenName || result.user.email || "User";
         Alert.alert(
           "Welcome!",
-          `Successfully signed in as ${result.user.name}`,
+          `Successfully signed in as ${userName}. Your recent emails are being fetched and saved to the database...`,
           [
             {
               text: "Continue",

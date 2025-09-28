@@ -6,6 +6,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import HomePage from "./src/pages/HomePage";
 import VideoFeed from "./src/pages/VideoFeed";
 import NewPage from "./src/pages/NewPage";
+import GmailIntegration from "./src/pages/GmailIntegration";
 
 const Stack = createStackNavigator();
 
@@ -24,6 +25,7 @@ export default function App() {
           <Stack.Screen name="Home" component={HomePage} />
           <Stack.Screen name="VideoFeed" component={VideoFeed} />
           <Stack.Screen name="NewPage" component={NewPage} />
+          <Stack.Screen name="GmailIntegration" component={GmailIntegration} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
