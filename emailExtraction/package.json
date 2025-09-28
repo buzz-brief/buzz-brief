@@ -2,13 +2,13 @@
   "name": "buzzbrief",
   "version": "0.0.1",
   "private": true,
-  "main": "emailExtraction/index.js",
+  "main": "index.js",
   "scripts": {
-    "android": "cd emailExtraction && react-native run-android",
-    "ios": "cd emailExtraction && react-native run-ios",
-    "start": "cd emailExtraction && react-native start",
-    "lint": "cd emailExtraction && eslint .",
-    "test": "cd emailExtraction && jest"
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "lint": "eslint .",
+    "test": "jest"
   },
   "dependencies": {
     "@react-native-google-signin/google-signin": "^16.0.0",
