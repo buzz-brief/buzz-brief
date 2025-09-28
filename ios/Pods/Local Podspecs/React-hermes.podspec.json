@@ -1,6 +1,6 @@
 {
   "name": "React-hermes",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "Hermes engine for React Native",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,13 +10,14 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
+  "public_header_files": "executor/HermesExecutorFactory.h",
   "source_files": [
     "executor/*.{cpp,h}",
-    "inspector-modern/chrome/*.{cpp,h}"
+    "inspector-modern/chrome/*.{cpp,h}",
+    "executor/HermesExecutorFactory.h"
   ],
-  "public_header_files": "executor/HermesExecutorFactory.h",
   "pod_target_xcconfig": {
     "HEADER_SEARCH_PATHS": [
       "\"${PODS_ROOT}/hermes-engine/destroot/include\"",
@@ -24,8 +25,6 @@
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspector/jsinspector_modern.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectorcdp/jsinspector_moderncdp.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectortracing/jsinspector_moderntracing.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers/platform/ios\"",
       "$(PODS_ROOT)/glog",
       "$(PODS_ROOT)/boost",
       "$(PODS_ROOT)/DoubleConversion",
@@ -40,16 +39,16 @@
   "header_dir": "reacthermes",
   "dependencies": {
     "React-cxxreact": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-jsiexecutor": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-jsinspector": [],
     "React-jsinspectorcdp": [],
     "React-jsinspectortracing": [],
     "React-perflogger": [
-      "0.81.4"
+      "0.80.2"
     ],
     "hermes-engine": [],
     "React-jsi": [],

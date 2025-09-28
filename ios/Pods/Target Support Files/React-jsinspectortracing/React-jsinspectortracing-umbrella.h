@@ -11,14 +11,12 @@
 #endif
 
 #import "jsinspector-modern/tracing/CdpTracing.h"
-#import "jsinspector-modern/tracing/ConsoleTimeStamp.h"
 #import "jsinspector-modern/tracing/EventLoopReporter.h"
 #import "jsinspector-modern/tracing/InstanceTracingProfile.h"
 #import "jsinspector-modern/tracing/PerformanceTracer.h"
 #import "jsinspector-modern/tracing/ProfileTreeNode.h"
 #import "jsinspector-modern/tracing/RuntimeSamplingProfile.h"
 #import "jsinspector-modern/tracing/RuntimeSamplingProfileTraceEventSerializer.h"
-#import "jsinspector-modern/tracing/Timing.h"
 #import "jsinspector-modern/tracing/TraceEvent.h"
 #import "jsinspector-modern/tracing/TraceEventProfile.h"
 

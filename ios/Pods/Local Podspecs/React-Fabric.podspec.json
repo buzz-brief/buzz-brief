@@ -1,6 +1,6 @@
 {
   "name": "React-Fabric",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "Fabric for React Native.",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": "dummyFile.cpp",
   "pod_target_xcconfig": {
@@ -18,8 +18,6 @@
     "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
     "DEFINES_MODULE": "YES",
     "HEADER_SEARCH_PATHS": [
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers/platform/ios\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-rendererdebug/React_rendererdebug.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers/react/renderer/graphics/platform/ios\"",
@@ -46,11 +44,11 @@
     "React-featureflags": [],
     "React-runtimescheduler": [],
     "React-cxxreact": [],
-    "React-runtimeexecutor": [],
     "React-rendererdebug": [],
     "React-graphics": [],
     "React-utils": [],
     "hermes-engine": [],
+    "React-hermes": [],
     "glog": [],
     "boost": [],
     "DoubleConversion": [],
@@ -60,6 +58,14 @@
     "SocketRocket": [],
     "RCT-Folly/Fabric": []
   },
+  "script_phases": [
+    {
+      "name": "[RN]Check rncore",
+      "execution_position": "before_compile",
+      "always_out_of_date": "1",
+      "script": "echo \"Checking whether Codegen has run...\"\nrncorePath=\"$REACT_NATIVE_PATH/ReactCommon/react/renderer/components/rncore\"\n\nif [[ ! -d \"$rncorePath\" ]]; then\n  echo 'error: Codegen did not run properly in your project. Please reinstall cocoapods with `bundle exec pod install`.'\n  exit 1\nfi\n"
+    }
+  ],
   "subspecs": [
     {
       "name": "animations",
@@ -72,12 +78,6 @@
       "source_files": "react/renderer/attributedstring/**/*.{m,mm,cpp,h}",
       "exclude_files": "react/renderer/attributedstring/tests",
       "header_dir": "react/renderer/attributedstring"
-    },
-    {
-      "name": "bridging",
-      "source_files": "react/renderer/bridging/**/*.{m,mm,cpp,h}",
-      "exclude_files": "react/renderer/bridging/tests",
-      "header_dir": "react/renderer/bridging"
     },
     {
       "name": "core",
@@ -100,6 +100,7 @@
     },
     {
       "name": "components",
+      "exclude_files": "react/renderer/components/scrollview/tests",
       "subspecs": [
         {
           "name": "root",
@@ -113,26 +114,30 @@
             "React-renderercss": [],
             "Yoga": []
           },
-          "source_files": [
-            "react/renderer/components/view/*.{m,mm,cpp,h}",
-            "react/renderer/components/view/platform/cxx/**/*.{m,mm,cpp,h}"
+          "source_files": "react/renderer/components/view/**/*.{m,mm,cpp,h}",
+          "exclude_files": [
+            "react/renderer/components/view/tests",
+            "react/renderer/components/view/platform/android",
+            "react/renderer/components/view/platform/windows"
           ],
-          "header_dir": "react/renderer/components/view"
+          "header_dir": "react/renderer/components/view",
+          "pod_target_xcconfig": {
+            "HEADER_SEARCH_PATHS": "\"$(PODS_ROOT)/Headers/Private/Yoga\""
+          }
         },
         {
           "name": "scrollview",
-          "source_files": "react/renderer/components/scrollview/**/*.{m,mm,cpp,h}",
-          "header_dir": "react/renderer/components/scrollview",
-          "exclude_files": [
-            "react/renderer/components/scrollview/tests",
-            "react/renderer/components/scrollview/platform/android"
-          ]
+          "source_files": "react/renderer/components/scrollview/*.{m,mm,cpp,h}",
+          "header_dir": "react/renderer/components/scrollview"
         },
         {
           "name": "legacyviewmanagerinterop",
           "source_files": "react/renderer/components/legacyviewmanagerinterop/**/*.{m,mm,cpp,h}",
           "exclude_files": "react/renderer/components/legacyviewmanagerinterop/tests",
-          "header_dir": "react/renderer/components/legacyviewmanagerinterop"
+          "header_dir": "react/renderer/components/legacyviewmanagerinterop",
+          "pod_target_xcconfig": {
+            "HEADER_SEARCH_PATHS": "\"$(PODS_ROOT)/Headers/Private/React-Core\""
+          }
         }
       ]
     },

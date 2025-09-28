@@ -1,6 +1,6 @@
 {
   "name": "React-FabricComponents",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "Fabric Components for React Native.",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,22 +10,21 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": "dummyFile.cpp",
   "pod_target_xcconfig": {
+    "USE_HEADERMAP": "YES",
     "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
     "DEFINES_MODULE": "YES",
     "HEADER_SEARCH_PATHS": [
       "\"$(PODS_TARGET_SRCROOT)/ReactCommon\"",
       "\"$(PODS_ROOT)/Headers/Private/Yoga\"",
       "\"$(PODS_TARGET_SRCROOT)\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTFBReactNativeSpec/React_RCTFBReactNativeSpec.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-rendererdebug/React_rendererdebug.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-graphics/React_graphics.framework/Headers/react/renderer/graphics/platform/ios\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-Fabric/React_Fabric.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-Fabric/React_Fabric.framework/Headers/react/renderer/components/scrollview/platform/cxx\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-Fabric/React_Fabric.framework/Headers/react/renderer/components/view/platform/cxx\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-Fabric/React_Fabric.framework/Headers/react/renderer/imagemanager/platform/ios\"",
       "$(PODS_ROOT)/glog",
@@ -51,11 +50,11 @@
     "React-runtimescheduler": [],
     "React-cxxreact": [],
     "Yoga": [],
-    "React-RCTFBReactNativeSpec": [],
     "React-rendererdebug": [],
     "React-graphics": [],
     "React-Fabric": [],
     "hermes-engine": [],
+    "React-hermes": [],
     "glog": [],
     "boost": [],
     "DoubleConversion": [],
@@ -65,6 +64,14 @@
     "SocketRocket": [],
     "RCT-Folly/Fabric": []
   },
+  "script_phases": [
+    {
+      "name": "[RN]Check rncore",
+      "execution_position": "before_compile",
+      "always_out_of_date": "1",
+      "script": "echo \"Checking whether Codegen has run...\"\nrncorePath=\"$REACT_NATIVE_PATH/ReactCommon/react/renderer/components/rncore\"\n\nif [[ ! -d \"$rncorePath\" ]]; then\n  echo 'error: Codegen did not run properly in your project. Please reinstall cocoapods with `bundle exec pod install`.'\n  exit 1\nfi\n"
+    }
+  ],
   "subspecs": [
     {
       "name": "components",
@@ -77,9 +84,14 @@
         },
         {
           "name": "modal",
-          "source_files": "react/renderer/components/modal/*.{m,mm,cpp,h}",
+          "source_files": "react/renderer/components/modal/**/*.{m,mm,cpp,h}",
           "exclude_files": "react/renderer/components/modal/tests",
           "header_dir": "react/renderer/components/modal"
+        },
+        {
+          "name": "rncore",
+          "source_files": "react/renderer/components/rncore/**/*.{m,mm,cpp,h}",
+          "header_dir": "react/renderer/components/rncore"
         },
         {
           "name": "safeareaview",
@@ -89,11 +101,7 @@
         },
         {
           "name": "scrollview",
-          "source_files": [
-            "react/renderer/components/scrollview/*.{m,mm,cpp,h}",
-            "react/renderer/components/scrollview/platform/cxx/**/*.{m,mm,cpp,h}"
-          ],
-          "exclude_files": "react/renderer/components/scrollview/tests",
+          "source_files": "react/renderer/components/scrollview/*.{m,mm,cpp,h}",
           "header_dir": "react/renderer/components/scrollview"
         },
         {
@@ -113,14 +121,6 @@
           "header_dir": "react/renderer/components/iostextinput"
         },
         {
-          "name": "switch",
-          "source_files": [
-            "react/renderer/components/switch/iosswitch/**/*.{m,mm,cpp,h}"
-          ],
-          "exclude_files": "react/renderer/components/switch/iosswitch/**/MacOS*.{m,mm,cpp,h}",
-          "header_dir": "react/renderer/components/switch/"
-        },
-        {
           "name": "textinput",
           "source_files": "react/renderer/components/textinput/*.{m,mm,cpp,h}",
           "header_dir": "react/renderer/components/textinput"
@@ -130,17 +130,6 @@
           "source_files": "react/renderer/components/unimplementedview/**/*.{m,mm,cpp,h}",
           "exclude_files": "react/renderer/components/unimplementedview/tests",
           "header_dir": "react/renderer/components/unimplementedview"
-        },
-        {
-          "name": "virtualview",
-          "source_files": "react/renderer/components/virtualview/**/*.{m,mm,cpp,h}",
-          "exclude_files": "react/renderer/components/virtualview/tests",
-          "header_dir": "react/renderer/components/virtualview"
-        },
-        {
-          "name": "rncore",
-          "source_files": "react/renderer/components/rncore/**/*.h",
-          "header_dir": "react/renderer/components/rncore"
         }
       ]
     },

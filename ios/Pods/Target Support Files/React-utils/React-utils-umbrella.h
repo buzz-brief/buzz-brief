@@ -26,7 +26,6 @@
 #import "react/utils/TemplateStringLiteral.h"
 #import "react/utils/toLower.h"
 #import "react/utils/to_underlying.h"
-#import "react/utils/FollyConvert.h"
 #import "react/utils/LowPriorityExecutor.h"
 
 FOUNDATION_EXPORT double react_utilsVersionNumber;

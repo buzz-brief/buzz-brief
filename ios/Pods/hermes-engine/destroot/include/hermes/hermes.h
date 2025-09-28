@@ -45,131 +45,74 @@ namespace debugger {
 class Debugger;
 }
 
-class HermesRuntime;
-/// The Hermes Root API interface. This is the entry point to create the Hermes
-/// runtime and to access Hermes-specific methods that do not rely on a runtime
-/// instance.
-class HERMES_EXPORT IHermesRootAPI : public jsi::ICast {
+class HermesRuntimeImpl;
+
+/// Represents a Hermes JS runtime.
+class HERMES_EXPORT HermesRuntime : public jsi::Runtime {
  public:
-  static constexpr jsi::UUID uuid{
-      0xb654d898,
-      0xdfad,
-      0x11ef,
-      0x859a,
-      0x325096b39f47};
-
-  // Returns an instance of Hermes Runtime.
-  virtual std::unique_ptr<HermesRuntime> makeHermesRuntime(
-      const ::hermes::vm::RuntimeConfig &runtimeConfig) = 0;
-
-  virtual bool isHermesBytecode(const uint8_t *data, size_t len) = 0;
-
+  static bool isHermesBytecode(const uint8_t *data, size_t len);
   // Returns the supported bytecode version.
-  virtual uint32_t getBytecodeVersion() = 0;
-
+  static uint32_t getBytecodeVersion();
   // (EXPERIMENTAL) Issues madvise calls for portions of the given
   // bytecode file that will likely be used when loading the bytecode
   // file and running its global function.
-  virtual void prefetchHermesBytecode(const uint8_t *data, size_t len) = 0;
-
+  static void prefetchHermesBytecode(const uint8_t *data, size_t len);
   // Returns whether the data is valid HBC with more extensive checks than
   // isHermesBytecode and returns why it isn't in errorMessage (if nonnull)
   // if not.
-  virtual bool hermesBytecodeSanityCheck(
+  static bool hermesBytecodeSanityCheck(
       const uint8_t *data,
       size_t len,
-      std::string *errorMessage = nullptr) = 0;
+      std::string *errorMessage = nullptr);
 
   /// Sets a global fatal handler that is shared across all active Hermes
   /// runtimes. Setting fatal handler in multiple places will override the
   /// previous fatal handler set by this functionality.
   /// The fatal handler must not throw exceptions, as Hermes is compiled without
   /// exceptions.
-  virtual void setFatalHandler(void (*handler)(const std::string &)) = 0;
+  static void setFatalHandler(void (*handler)(const std::string &));
 
   // Assuming that \p data is valid HBC bytecode data, returns a pointer to the
   // first element of the epilogue, data append to the end of the bytecode
   // stream. Return pair contain ptr to data and header.
-  virtual std::pair<const uint8_t *, size_t> getBytecodeEpilogue(
+  static std::pair<const uint8_t *, size_t> getBytecodeEpilogue(
       const uint8_t *data,
-      size_t len) = 0;
+      size_t len);
 
   /// Enable sampling profiler.
   /// Starts a separate thread that polls VM state with \p meanHzFreq frequency.
   /// Any subsequent call to \c enableSamplingProfiler() is ignored until
   /// next call to \c disableSamplingProfiler()
-  virtual void enableSamplingProfiler(double meanHzFreq = 100) = 0;
+  static void enableSamplingProfiler(double meanHzFreq = 100);
 
   /// Disable the sampling profiler
-  virtual void disableSamplingProfiler() = 0;
+  static void disableSamplingProfiler();
 
   /// Dump sampled stack trace to the given file name.
-  virtual void dumpSampledTraceToFile(const std::string &fileName) = 0;
+  static void dumpSampledTraceToFile(const std::string &fileName);
 
   /// Dump sampled stack trace to the given stream.
-  virtual void dumpSampledTraceToStream(std::ostream &stream) = 0;
+  static void dumpSampledTraceToStream(std::ostream &stream);
 
   /// Return the executed JavaScript function info.
   /// This information holds the segmentID, Virtualoffset and sourceURL.
   /// This information is needed specifically to be able to symbolicate non-CJS
   /// bundles correctly. This API will be simplified later to simply return a
   /// segmentID and virtualOffset, when we are able to only support CJS bundles.
-  virtual std::unordered_map<std::string, std::vector<std::string>>
-  getExecutedFunctions() = 0;
+  static std::unordered_map<std::string, std::vector<std::string>>
+  getExecutedFunctions();
 
   /// \return whether code coverage profiler is enabled or not.
-  virtual bool isCodeCoverageProfilerEnabled() = 0;
+  static bool isCodeCoverageProfilerEnabled();
 
   /// Enable code coverage profiler.
-  virtual void enableCodeCoverageProfiler() = 0;
+  static void enableCodeCoverageProfiler();
 
   /// Disable code coverage profiler.
-  virtual void disableCodeCoverageProfiler() = 0;
+  static void disableCodeCoverageProfiler();
 
- protected:
-  /// The destructor is protected as delete calls on interfaces must not occur.
-  /// It is also non-virtual to simplify the v-table.
-  ~IHermesRootAPI() {}
-};
-
-/// The setFatalHandler functionality has global effects, which may cause
-/// unintended or surprising behavior for users of this API. For this reason, it
-/// is not recommended and the functionality is provided by the optional
-/// interface ISetFatalHandler.
-class HERMES_EXPORT ISetFatalHandler : public jsi::ICast {
- public:
-  static constexpr jsi::UUID uuid{
-      0xda98a610,
-      0x09cb,
-      0x11f0,
-      0x87bf,
-      0x325096b39f47};
-  /// Sets a global fatal handler that is shared across all active Hermes
-  /// runtimes. Setting fatal handler in multiple places will override the
-  /// previous fatal handler set by this functionality.
-  /// The fatal handler must not throw exceptions, as Hermes is compiled without
-  /// exceptions.
-  virtual void setFatalHandler(void (*handler)(const std::string &)) = 0;
-
- protected:
-  ~ISetFatalHandler() = default;
-};
-
-/// Interface for Hermes-specific runtime methods.The actual implementations of
-/// the pure virtual methods are provided by a class internal to the .cpp file,
-/// which is created by the factory.
-class HERMES_EXPORT IHermes : public jsi::ICast {
- public:
-  static constexpr jsi::UUID uuid{
-      0xe85cfa22,
-      0xdfae,
-      0x11ef,
-      0xa6f7,
-      0x325096b39f47};
-
-  /// Return a ICast pointer to an object that be cast into the interface
-  /// IHermesRootAPI. This root API object has static lifetime.
-  virtual ICast *getHermesRootAPI() = 0;
+  /// Define a destructor to serve as the key function.
+  ~HermesRuntime() override;
 
   /// Serialize the sampled stack to the format expected by DevTools'
   /// Profiler.stop return type.
@@ -301,43 +244,20 @@ class HERMES_EXPORT IHermes : public jsi::ICast {
   /// This function is considered unsafe and unstable.
   /// Direct use of a vm::Runtime should be avoided as the lower level APIs are
   /// unsafe and they can change without notice.
-  virtual void *getVMRuntimeUnsafe() const = 0;
+  virtual ::hermes::vm::Runtime *getVMRuntimeUnsafe() const = 0;
 
- protected:
-  ~IHermes() = default;
-};
+ private:
+  // Only HermesRuntimeImpl can subclass this.
+  HermesRuntime() = default;
+  friend class HermesRuntimeImpl;
 
-/// Interface for methods that are exposed for test purposes.
-class HERMES_EXPORT IHermesTestHelpers : public jsi::ICast {
- public:
-  static constexpr jsi::UUID uuid{
-      0x664e489a,
-      0xf941,
-      0x11ef,
-      0xa44c,
-      0x325096b39f47};
-
+  friend struct ::HermesTestHelper;
   virtual size_t rootsListLengthForTests() const = 0;
 
- protected:
-  ~IHermesTestHelpers() = default;
+  // Do not add any members here.  This ensures that there are no
+  // object size inconsistencies.  All data should be in the impl
+  // class in the .cpp file.
 };
-
-class HermesRuntime : public jsi::Runtime, public IHermes {
- public:
-  /// Similar to jsi::Runtime, HermesRuntime is treated as an object, rather
-  /// than a pure interface. This is to prevent breaking usages of
-  /// HermesRuntime prior to the introduction of jsi::IRuntime, IHermes, and
-  /// other interfaces.
-  ~HermesRuntime() override = default;
-
-  using jsi::Runtime::castInterface;
-};
-
-/// Returns a pointer to an object that can be cast into IHermesRootAPI, which
-/// can be used to create a Hermes runtime and to access global Hermes-specific
-/// methods. This object has static lifetime.
-HERMES_EXPORT jsi::ICast *makeHermesRootAPI();
 
 /// Return a RuntimeConfig that is more suited for running untrusted JS than
 /// the default config. Disables some language features and may trade off some
@@ -345,6 +265,7 @@ HERMES_EXPORT jsi::ICast *makeHermesRootAPI();
 ///
 /// Can serve as a starting point with tweaks to re-enable needed features:
 ///   auto conf = hardenedHermesRuntimeConfig().rebuild();
+///   conf.withArrayBuffer(true);
 ///   ...
 ///   auto runtime = makeHermesRuntime(conf.build());
 HERMES_EXPORT ::hermes::vm::RuntimeConfig hardenedHermesRuntimeConfig();

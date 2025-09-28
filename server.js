@@ -10,8 +10,8 @@ function decodeBase64(str) {
 
 function cleanHtml(html) {
   return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') 
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') 
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<\/?[^>]+(>|$)/g, '') 
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
@@ -53,12 +53,10 @@ app.post('/fetch-emails', async (req, res) => {
         if (plainPart) {
           body = decodeBase64(plainPart.body.data);
         } else {
-
           const htmlPart = payload.parts.find(p => p.mimeType === 'text/html' && p.body?.data);
           if (htmlPart) body = cleanHtml(decodeBase64(htmlPart.body.data));
         }
       } else if (payload.body?.data) {
-        
         body = payload.mimeType === 'text/html' ? cleanHtml(decodeBase64(payload.body.data)) : decodeBase64(payload.body.data);
       }
 
@@ -73,7 +71,7 @@ app.post('/fetch-emails', async (req, res) => {
     }
 
     fs.writeFileSync('gmail_emails.txt', emailData.join('\n'), 'utf-8');
-    res.json({ message: '✅ Last 100 distinct emails saved to gmail_emails.txt (clean text)' });
+    res.json({ message: 'Last 100 distinct emails saved to gmail_emails.txt (clean text)' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch emails' });

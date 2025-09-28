@@ -1,6 +1,6 @@
 {
   "name": "React-RuntimeApple",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "The React Native Runtime.",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": "ReactCommon/*.{mm,h}",
   "header_dir": "ReactCommon",
@@ -19,12 +19,8 @@
       "$(PODS_ROOT)/Headers/Private/React-Core",
       "$(PODS_TARGET_SRCROOT)/../../../..",
       "$(PODS_TARGET_SRCROOT)/../../../../..",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers/platform/ios\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsitooling/JSITooling.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTFBReactNativeSpec/React_RCTFBReactNativeSpec.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-utils/React_utils.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-utils/React_utils.framework/Headers/react/utils/platform/ios\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-RuntimeHermes/React_RuntimeHermes.framework/Headers\"",
       "$(PODS_ROOT)/glog",
       "$(PODS_ROOT)/boost",
@@ -44,6 +40,7 @@
     "React-callinvoker": [],
     "React-runtimeexecutor": [],
     "React-runtimescheduler": [],
+    "React-utils": [],
     "React-jsi": [],
     "React-Core/Default": [],
     "React-CoreModules": [],
@@ -56,7 +53,6 @@
     "React-featureflags": [],
     "React-jsitooling": [],
     "React-RCTFBReactNativeSpec": [],
-    "React-utils": [],
     "hermes-engine": [],
     "React-RuntimeHermes": [],
     "glog": [],

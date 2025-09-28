@@ -1,6 +1,6 @@
 {
   "name": "React-jsitooling",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "-",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": "react/runtime/*.{cpp,h}",
   "header_dir": "react/runtime",
@@ -18,8 +18,6 @@
     "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
     "DEFINES_MODULE": "YES",
     "HEADER_SEARCH_PATHS": [
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers/platform/ios\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspector/jsinspector_modern.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectorcdp/jsinspector_moderncdp.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectortracing/jsinspector_moderntracing.framework/Headers\"",
@@ -34,12 +32,11 @@
   },
   "dependencies": {
     "React-cxxreact": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-jsi": [
-      "0.81.4"
+      "0.80.2"
     ],
-    "React-runtimeexecutor": [],
     "React-jsinspector": [],
     "React-jsinspectorcdp": [],
     "React-jsinspectortracing": [],

@@ -10,7 +10,6 @@
 #endif
 #endif
 
-#import "jsinspector-modern/network/BoundedRequestBuffer.h"
 #import "jsinspector-modern/network/CdpNetwork.h"
 #import "jsinspector-modern/network/HttpUtils.h"
 #import "jsinspector-modern/network/NetworkReporter.h"

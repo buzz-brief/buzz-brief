@@ -1,12 +1,10 @@
-
 const axios = require('axios');
 const fs = require('fs');
 
-const ACCESS_TOKEN = 'PASTE_YOUR_TOKEN_HERE'; 
+const ACCESS_TOKEN = 'PASTE_YOUR_TOKEN_HERE';
 
 async function fetchEmails() {
   try {
-
     const listRes = await axios.get('https://gmail.googleapis.com/gmail/v1/users/me/messages', {
       headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
     });
@@ -24,9 +22,7 @@ async function fetchEmails() {
     }
 
     fs.writeFileSync('gmail_emails.txt', fileContent, 'utf8');
-    console.log('✅ All emails saved to gmail_emails.txt in your project folder!');
-  } catch (err) {
-    console.error('❌ Error fetching emails:', err.response?.data || err.message);
+    console.log('All emails saved to gmail_emails.txt');
   }
 }
 

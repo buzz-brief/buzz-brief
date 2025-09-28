@@ -30,12 +30,6 @@ static inline std::string toString(const RNGoogleSigninButtonColor &value) {
   }
 }
 
-#ifdef RN_SERIALIZABLE_STATE
-static inline folly::dynamic toDynamic(const RNGoogleSigninButtonColor &value) {
-  return toString(value);
-}
-#endif
-
 class RNGoogleSigninButtonProps final : public ViewProps {
  public:
   RNGoogleSigninButtonProps() = default;
@@ -46,12 +40,6 @@ class RNGoogleSigninButtonProps final : public ViewProps {
   bool disabled{false};
   RNGoogleSigninButtonColor color{RNGoogleSigninButtonColor::Light};
   int size{0};
-
-  #ifdef RN_SERIALIZABLE_STATE
-  ComponentName getDiffPropsImplementationTarget() const override;
-
-  folly::dynamic getDiffProps(const Props* prevProps) const override;
-  #endif
 };
 
 } // namespace facebook::react

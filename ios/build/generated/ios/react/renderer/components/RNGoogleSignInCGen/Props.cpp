@@ -21,37 +21,7 @@ RNGoogleSigninButtonProps::RNGoogleSigninButtonProps(
 
     disabled(convertRawProp(context, rawProps, "disabled", sourceProps.disabled, {false})),
     color(convertRawProp(context, rawProps, "color", sourceProps.color, {RNGoogleSigninButtonColor::Light})),
-    size(convertRawProp(context, rawProps, "size", sourceProps.size, {0})) {}
-    
-#ifdef RN_SERIALIZABLE_STATE
-ComponentName RNGoogleSigninButtonProps::getDiffPropsImplementationTarget() const {
-  return "RNGoogleSigninButton";
-}
-
-folly::dynamic RNGoogleSigninButtonProps::getDiffProps(
-    const Props* prevProps) const {
-  static const auto defaultProps = RNGoogleSigninButtonProps();
-  const RNGoogleSigninButtonProps* oldProps = prevProps == nullptr
-      ? &defaultProps
-      : static_cast<const RNGoogleSigninButtonProps*>(prevProps);
-  if (this == oldProps) {
-    return folly::dynamic::object();
-  }
-  folly::dynamic result = HostPlatformViewProps::getDiffProps(prevProps);
-  
-  if (disabled != oldProps->disabled) {
-    result["disabled"] = disabled;
-  }
-    
-  if (color != oldProps->color) {
-    result["color"] = toDynamic(color);
-  }
-    
-  if (size != oldProps->size) {
-    result["size"] = size;
-  }
-  return result;
-}
-#endif
+    size(convertRawProp(context, rawProps, "size", sourceProps.size, {0}))
+      {}
 
 } // namespace facebook::react

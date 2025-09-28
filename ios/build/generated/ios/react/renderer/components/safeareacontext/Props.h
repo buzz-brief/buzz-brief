@@ -23,12 +23,6 @@ class RNCSafeAreaProviderProps final : public ViewProps {
 #pragma mark - Props
 
   
-
-  #ifdef RN_SERIALIZABLE_STATE
-  ComponentName getDiffPropsImplementationTarget() const override;
-
-  folly::dynamic getDiffProps(const Props* prevProps) const override;
-  #endif
 };
 
 enum class RNCSafeAreaViewMode { Padding, Margin };
@@ -46,30 +40,11 @@ static inline std::string toString(const RNCSafeAreaViewMode &value) {
     case RNCSafeAreaViewMode::Margin: return "margin";
   }
 }
-
-#ifdef RN_SERIALIZABLE_STATE
-static inline folly::dynamic toDynamic(const RNCSafeAreaViewMode &value) {
-  return toString(value);
-}
-#endif
 struct RNCSafeAreaViewEdgesStruct {
   std::string top{};
   std::string right{};
   std::string bottom{};
   std::string left{};
-
-#ifdef RN_SERIALIZABLE_STATE
-  bool operator==(const RNCSafeAreaViewEdgesStruct&) const = default;
-
-  folly::dynamic toDynamic() const {
-    folly::dynamic result = folly::dynamic::object();
-    result["top"] = top;
-    result["right"] = right;
-    result["bottom"] = bottom;
-    result["left"] = left;
-    return result;
-  }
-#endif
 };
 
 static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, RNCSafeAreaViewEdgesStruct &result) {
@@ -96,12 +71,6 @@ static inline void fromRawValue(const PropsParserContext& context, const RawValu
 static inline std::string toString(const RNCSafeAreaViewEdgesStruct &value) {
   return "[Object RNCSafeAreaViewEdgesStruct]";
 }
-
-#ifdef RN_SERIALIZABLE_STATE
-static inline folly::dynamic toDynamic(const RNCSafeAreaViewEdgesStruct &value) {
-  return value.toDynamic();
-}
-#endif
 class RNCSafeAreaViewProps final : public ViewProps {
  public:
   RNCSafeAreaViewProps() = default;
@@ -111,12 +80,6 @@ class RNCSafeAreaViewProps final : public ViewProps {
 
   RNCSafeAreaViewMode mode{RNCSafeAreaViewMode::Padding};
   RNCSafeAreaViewEdgesStruct edges{};
-
-  #ifdef RN_SERIALIZABLE_STATE
-  ComponentName getDiffPropsImplementationTarget() const override;
-
-  folly::dynamic getDiffProps(const Props* prevProps) const override;
-  #endif
 };
 
 } // namespace facebook::react

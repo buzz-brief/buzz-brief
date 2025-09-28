@@ -2,7 +2,7 @@
   "name": "React-NativeModulesApple",
   "module_name": "React_NativeModulesApple",
   "header_dir": "ReactCommon",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "-",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -12,14 +12,12 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "pod_target_xcconfig": {
     "HEADER_SEARCH_PATHS": [
       "\"$(PODS_ROOT)/Headers/Private/React-Core\"",
       "\"$(PODS_CONFIGURATION_BUILD_DIR)/React-debug/React_featureflags.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers/platform/ios\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-featureflags/React_featureflags.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspector/jsinspector_modern.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectorcdp/jsinspector_moderncdp.framework/Headers\"",
@@ -48,6 +46,7 @@
     "React-jsinspector": [],
     "React-jsinspectorcdp": [],
     "hermes-engine": [],
+    "React-hermes": [],
     "glog": [],
     "boost": [],
     "DoubleConversion": [],

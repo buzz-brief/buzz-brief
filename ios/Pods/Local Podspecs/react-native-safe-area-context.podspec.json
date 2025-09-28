@@ -37,6 +37,7 @@
     "React-jsi": [],
     "React-renderercss": [],
     "hermes-engine": [],
+    "React-hermes": [],
     "glog": [],
     "boost": [],
     "DoubleConversion": [],

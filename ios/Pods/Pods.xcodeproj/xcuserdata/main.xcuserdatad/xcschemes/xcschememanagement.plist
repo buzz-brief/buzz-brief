@@ -384,6 +384,11 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>React-rncore.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>React-runtimeexecutor.xcscheme</key>
 		<dict>
 			<key>isShown</key>

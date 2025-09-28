@@ -1,6 +1,6 @@
 {
   "name": "React-cxxreact",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "-",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,9 +10,10 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": "*.{cpp,h}",
+  "exclude_files": "SampleCxxModule.*",
   "pod_target_xcconfig": {
     "HEADER_SEARCH_PATHS": [
       "\"$(PODS_CONFIGURATION_BUILD_DIR)/React-debug/React_debug.framework/Headers\"",
@@ -20,8 +21,6 @@
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspector/jsinspector_modern.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectorcdp/jsinspector_moderncdp.framework/Headers\"",
       "\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspectortracing/jsinspector_moderntracing.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers\"",
-      "\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimeexecutor/React_runtimeexecutor.framework/Headers/platform/ios\"",
       "$(PODS_ROOT)/glog",
       "$(PODS_ROOT)/boost",
       "$(PODS_ROOT)/DoubleConversion",
@@ -38,23 +37,25 @@
     "React-jsinspectorcdp": [],
     "React-jsinspectortracing": [],
     "React-callinvoker": [
-      "0.81.4"
+      "0.80.2"
     ],
-    "React-runtimeexecutor": [],
+    "React-runtimeexecutor": [
+      "0.80.2"
+    ],
     "React-perflogger": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-jsi": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-logger": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-debug": [
-      "0.81.4"
+      "0.80.2"
     ],
     "React-timing": [
-      "0.81.4"
+      "0.80.2"
     ],
     "hermes-engine": [],
     "glog": [],

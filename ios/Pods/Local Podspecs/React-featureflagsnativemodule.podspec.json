@@ -1,6 +1,6 @@
 {
   "name": "React-featureflagsnativemodule",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "React Native internal feature flags",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": "*.{cpp,h}",
   "header_dir": "react/nativemodule/featureflags",
@@ -32,6 +32,7 @@
     "React-jsi": [],
     "React-jsiexecutor": [],
     "hermes-engine": [],
+    "React-hermes": [],
     "glog": [],
     "boost": [],
     "DoubleConversion": [],

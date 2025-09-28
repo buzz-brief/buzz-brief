@@ -1,3 +1,6 @@
+npx react-native start --reset-cache
+
+
 cd ios
 pod install
 cd ..

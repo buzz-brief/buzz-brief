@@ -38,7 +38,6 @@
 #import "React/RCTUnimplementedViewComponentView.h"
 #import "React/RCTViewAccessibilityElement.h"
 #import "React/RCTViewComponentView.h"
-#import "React/RCTVirtualViewComponentView.h"
 #import "React/RCTComponentViewClassDescriptor.h"
 #import "React/RCTComponentViewDescriptor.h"
 #import "React/RCTComponentViewFactory.h"

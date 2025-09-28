@@ -31,9 +31,6 @@ class HermesValue;
 namespace facebook {
 namespace hermes {
 class HermesRuntime;
-// Forward declaration of the internal Root API class, which is marked as a
-// friend of the Debugger.
-class HermesRootAPI;
 
 namespace debugger {
 
@@ -272,7 +269,6 @@ class HERMES_EXPORT Debugger {
   ::facebook::jsi::Value getThrownValue();
 
  private:
-  friend HermesRootAPI;
   friend std::unique_ptr<HermesRuntime> hermes::makeHermesRuntime(
       const ::hermes::vm::RuntimeConfig &);
   friend std::unique_ptr<jsi::ThreadSafeRuntime>

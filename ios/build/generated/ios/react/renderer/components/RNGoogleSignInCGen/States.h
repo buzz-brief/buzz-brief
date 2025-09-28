@@ -8,13 +8,22 @@
  */
 #pragma once
 
-#include <react/renderer/core/StateData.h>
-#ifdef RN_SERIALIZABLE_STATE
+#ifdef ANDROID
 #include <folly/dynamic.h>
 #endif
 
 namespace facebook::react {
 
-using RNGoogleSigninButtonState = StateData;
+class RNGoogleSigninButtonState {
+public:
+  RNGoogleSigninButtonState() = default;
+
+#ifdef ANDROID
+  RNGoogleSigninButtonState(RNGoogleSigninButtonState const &previousState, folly::dynamic data){};
+  folly::dynamic getDynamic() const {
+    return {};
+  };
+#endif
+};
 
 } // namespace facebook::react

@@ -1,6 +1,6 @@
 {
   "name": "React-graphics",
-  "version": "0.81.4",
+  "version": "0.80.2",
   "summary": "Fabric for React Native.",
   "homepage": "https://reactnative.dev/",
   "license": "MIT",
@@ -10,7 +10,7 @@
   },
   "source": {
     "git": "https://github.com/facebook/react-native.git",
-    "tag": "v0.81.4"
+    "tag": "v0.80.2"
   },
   "source_files": [
     "*.{m,mm,cpp,h}",
@@ -38,6 +38,7 @@
     "React-jsiexecutor": [],
     "React-utils": [],
     "hermes-engine": [],
+    "React-hermes": [],
     "glog": [],
     "boost": [],
     "DoubleConversion": [],

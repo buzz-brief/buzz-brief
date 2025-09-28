@@ -22,7 +22,6 @@
 #import "react/bridging/Error.h"
 #import "react/bridging/EventEmitter.h"
 #import "react/bridging/Function.h"
-#import "react/bridging/HighResTimeStamp.h"
 #import "react/bridging/LongLivedObject.h"
 #import "react/bridging/Number.h"
 #import "react/bridging/Object.h"
